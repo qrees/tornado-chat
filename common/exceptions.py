@@ -1,0 +1,4 @@
+
+class HandlerNotFound(Exception):
+    pass
+
