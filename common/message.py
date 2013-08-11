@@ -3,10 +3,9 @@ from common.db import get_session
 
 class Message(object):
 
-    def __init__(self, id, request, message, db_session, handler):
+    def __init__(self, id, request, message, handler):
         self.request = request
         self.message = message
-        self.db_session = db_session
         self.handler = handler
         self.id = id
 
@@ -19,6 +18,5 @@ class Message(object):
             id=msg_id,
             request=handler.request,
             message=msg_body,
-            db_session=get_session(),
             handler=handler)
         return message

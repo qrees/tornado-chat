@@ -21,7 +21,6 @@ class WebSocketRouter(tornado.websocket.WebSocketHandler):
         """
         json_message = json.loads(message)
         msg_handlers = route_to_handler(json_message['route'])
-
         message = Message.from_json(json_message=json_message, handler=self)
 
         for msg_handler_cls in msg_handlers:

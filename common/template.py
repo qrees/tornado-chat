@@ -1,5 +1,6 @@
 import os
 
+
 class FileTemplate(object):
 
     def __init__(self, _file):
