@@ -1,13 +1,16 @@
-from common.db import get_session
+import logging
 
 
 class Message(object):
 
-    def __init__(self, id, request, message, handler):
-        self.request = request
-        self.message = message
-        self.handler = handler
-        self.id = id
+    def __init__(self, id, request, body, handler):
+        self._request = request
+        self._body = body
+        self._handler = handler
+        self._id = id
+
+    def get_body(self):
+        return self._body
 
     @staticmethod
     def from_json(json_message, handler):
@@ -17,6 +20,16 @@ class Message(object):
         message = Message(
             id=msg_id,
             request=handler.request,
-            message=msg_body,
+            body=msg_body,
             handler=handler)
         return message
+
+    def respond(self, response):
+        data = response.get_data()
+        envelope = {
+            'id': self._id,
+            'body': data,
+            'status': response.get_status()
+        }
+        logging.debug("Writing message %r" % envelope)
+        self._handler.write_message(envelope)

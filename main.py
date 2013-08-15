@@ -1,19 +1,14 @@
-import importlib
-
 from common.argument_parser import get_parser
-import settings
+from common.autodiscover import autodiscrover
+import logging
 
-parser = get_parser()
+
+logging.basicConfig(level=logging.DEBUG)
+
+autodiscrover()
 
 
-for app in ['common'] + settings.INSTALLED_APPS:
-    app_auto_path = app + "." + "auto"
-    try:
-        app_auto = importlib.import_module(app_auto_path)
-    except ImportError:
-        continue
-    if hasattr(app_auto, 'init'):
-        app_auto.init()
-
-args = parser.parse_args()
-args.func(args)
+if __name__ == "__main__":
+    parser = get_parser()
+    args = parser.parse_args()
+    args.func(args)

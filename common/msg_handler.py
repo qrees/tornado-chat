@@ -1,5 +1,7 @@
 import abc
+import logging
 import six
+from tornado import gen
 from common.exceptions import HandlerNotFound
 
 
@@ -17,7 +19,7 @@ class MsgHandlerRegistry(object):
 
     def register(self, cls):
         route = cls.route
-        print "Registering route '%s' with %r" % (route, cls)
+        logging.debug("Registering route '%s' with %r" % (route, cls))
         self.validate(cls)
         if isinstance(route, six.string_types):
             self.basic_routes[route] = cls
@@ -67,5 +69,25 @@ class MsgHandler(object):
     def route(self):
         pass
 
-    def __call__(self, *args, **kwargs):
+    def do_call(self, message):
+        pass
+
+    @gen.coroutine
+    def call(self, message):
+        try:
+            def wrap(callback):
+                try:
+                    result = self.do_call(message=message)
+                    callback(result)
+                except Exception, e:
+                    logging.exception("Exception when calling message handler in %r" % (self,))
+                    raise
+            logging.debug("Start task")
+            response = yield gen.Task(wrap,)
+            logging.debug("end task")
+            message.respond(response)
+        except Exception, e:
+            logging.exception("Failure in coroutine")
+
+    def result(self, future):
         pass

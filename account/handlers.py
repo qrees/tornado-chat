@@ -1,6 +1,6 @@
 
 import tornado.websocket
-from common.handler import WebSocketRouter
+from common.websocket_handler import WebSocketRouter
 from common.template import FileTemplate
 
 

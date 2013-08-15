@@ -22,6 +22,7 @@ current = os.path.abspath(__file__)
 base = os.path.dirname(os.path.dirname(current))
 static_path = os.path.join(base, 'static')
 
+
 def runserver(args):
     if args.debug:
         sys.stderr.write("Running in debug mode\n")
