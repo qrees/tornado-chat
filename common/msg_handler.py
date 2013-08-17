@@ -3,7 +3,7 @@ import logging
 import six
 from tornado import gen
 from common.exceptions import HandlerNotFound
-
+import tornado.stack_context
 
 class MsgHandlerRegistry(object):
     basic_routes = None
@@ -83,7 +83,7 @@ class MsgHandler(object):
                     logging.exception("Exception when calling message handler in %r" % (self,))
                     raise
             logging.debug("Start task")
-            response = yield gen.Task(wrap,)
+            response = yield gen.Task(tornado.stack_context.wrap(wrap),)
             logging.debug("end task")
             message.respond(response)
         except Exception, e:
