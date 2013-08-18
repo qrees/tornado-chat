@@ -147,6 +147,9 @@
     TC.Object = Class({
         init: function(){
 
+        },
+        destroy: function(){
+
         }
     })
 })();

@@ -1,9 +1,13 @@
 import abc
 import logging
 import six
-from tornado import gen
-from common.exceptions import HandlerNotFound
+
 import tornado.stack_context
+from tornado import gen
+
+from common.business_logic import BusinessResponse
+from common.exceptions import HandlerNotFound
+from common.hacks import MultiDict
 
 class MsgHandlerRegistry(object):
     basic_routes = None
@@ -15,7 +19,7 @@ class MsgHandlerRegistry(object):
 
     def validate(self, cls):
         if isinstance(cls.route, abc.abstractproperty):
-            raise Exception("%r has no 'route' attribute defined")
+            raise Exception("%r has no 'route' attribute defined" % cls)
 
     def register(self, cls):
         route = cls.route
@@ -91,3 +95,17 @@ class MsgHandler(object):
 
     def result(self, future):
         pass
+
+
+class BusinessMsgHandler(MsgHandler):
+    __abstract__ = True
+    FORM = None
+    METHOD = None
+
+    def do_call(self, message):
+        form = self.FORM(MultiDict(message.get_body()))
+        if form.validate():
+            data = form.data
+            return self.METHOD(**data)
+        else:
+            return BusinessResponse.response_invalid_data(form.errors)

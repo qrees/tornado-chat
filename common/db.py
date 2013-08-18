@@ -14,19 +14,18 @@ class Database(object):
         self.session_factory = sessionmaker()
         self.engine = create_engine(settings.DATABASE_URL)
         self.session_factory.configure(bind=self.engine)
+        self.scoped_session = scoped_session(self.session_factory)
 
     def session(self):
-        return scoped_session(self.session_factory)
+        return self.scoped_session()
 
-    def close_session(self):
-        session = self.session()
-        session.commit()
-        session.remove()
+    def commit_session(self):
+        self.session().commit()
+        self.scoped_session.remove()
 
     def rollback_session(self):
-        session = self.session()
-        session.rollback()
-        session.remove()
+        self.session().rollback()
+        self.scoped_session.remove()
 
     def syncdb(self, base):
         base.metadata.create_all(self.engine)
@@ -40,7 +39,8 @@ def get_db():
 
 
 def get_session():
-    return get_db().session()
+    session = get_db().session()
+    return session
 
 
 class SessionScope(object):

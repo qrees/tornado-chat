@@ -1,6 +1,6 @@
 import functools
 import logging
-from common.db import get_session
+from common.db import get_session, get_db
 
 
 class BusinessResponse(object):
@@ -34,22 +34,23 @@ class BusinessResponse(object):
         pass
 
 
-def business_method(method):
+class business_method(object):
+    def __init__(self, func):
+        self.func = func
+        functools.wraps(func)(self)
 
-    @functools.wraps(method)
-    def wrapped(*args, **kwargs):
-        print "Called %r with %r %r" % (method, args, kwargs)
+    def __call__(self, **kwargs):
+        print "Called %r with %r" % (self.func, kwargs)
+        db = get_db()
         session = get_session()
         # noinspection PyBroadException
         try:
-            response = method(*args, **kwargs)
-            session.commit()
+            response = self.func(**kwargs)
+            db.commit_session()
         except Exception, e:
             logging.exception("Exception when calling business method")
             response = BusinessResponse.response_exception(e)
-            session.rollback()
+            db.rollback_session()
         finally:
-            session.close()
+            pass
         return response
-
-    return wrapped
