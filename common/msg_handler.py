@@ -9,6 +9,7 @@ from common.business_logic import BusinessResponse
 from common.exceptions import HandlerNotFound
 from common.hacks import MultiDict
 
+
 class MsgHandlerRegistry(object):
     basic_routes = None
     routes = None
@@ -74,7 +75,7 @@ class MsgHandler(object):
         pass
 
     def do_call(self, message):
-        pass
+        return None
 
     @gen.coroutine
     def call(self, message):

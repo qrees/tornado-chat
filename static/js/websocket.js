@@ -39,6 +39,7 @@
             console.debug("IN", parsed_data);
             var message_id = parsed_data.id;
             var message_route = parsed_data.route;
+
             if (message_id in message_callbacks) {
                 message_callbacks[message_id](parsed_data);
                 delete message_callbacks[message_id];
@@ -93,8 +94,9 @@
             throw new Error("Unknown event name: " + event_name);
         };
 
-        this.send = function(route, data, callback) {
+        this.send = function(route, data, callback, sid) {
             var id = Math.random().toString();
+
             if(callback) {
                 message_callbacks[id] = callback;
             }
@@ -102,7 +104,8 @@
             var message = {
                id: id,
                route: route,
-               body: data
+               body: data,
+               sid: sid
             };
 
             console.debug("OUT", message);

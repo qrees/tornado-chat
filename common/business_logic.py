@@ -40,7 +40,6 @@ class business_method(object):
         functools.wraps(func)(self)
 
     def __call__(self, **kwargs):
-        print "Called %r with %r" % (self.func, kwargs)
         db = get_db()
         session = get_session()
         # noinspection PyBroadException

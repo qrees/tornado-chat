@@ -151,5 +151,13 @@
         destroy: function(){
 
         }
-    })
+    });
+
+
+    TC.Observable = TC.Class(TC.Object, {
+
+    });
+
+    Observable(TC.Observable.prototype);
+
 })();

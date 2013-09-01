@@ -17,23 +17,12 @@
             return connection;
         });
 
-    var LoginCtrl = function($scope, $routeParams, $connection) {
-        $scope.username = '';
-        $scope.password = '';
-
-        $scope.login = function(){
-            $connection.login($scope.username, $scope.password);
-        }
-
-        $scope.register = function(){
-            $connection.register($scope.username, $scope.password);
-        }
-    };
-
     module.
       config(['$routeProvider', function($routeProvider) {
       $routeProvider.
-          when('/login', {templateUrl: 'static/partials/login.html',   controller: LoginCtrl}).
+          when('/login', {templateUrl: 'static/partials/login.html',   controller: TC.LoginCtrl}).
+          when('/dash', {templateUrl: 'static/partials/dash.html', controller: TC.DashCtrl}).
+          when('/chat/:chatId', {templateUrl: 'static/partials/chat.html', controller: TC.ChatCtrl}).
           otherwise({redirectTo: '/login'});
     }]).
     run([ "$connection", function($connection){
