@@ -71,13 +71,23 @@
         // very important to reset the constructor as any class with a superclass
         // will have it overwritten
         F.prototype.constructor = F;
-        F.create = function () {
-            var obj = create(F);
-            if ("init" in obj) {
-                obj.init.apply(obj, arguments);
+
+        if(F.prototype.init){
+            var str = F.prototype.init.toString();
+            var header = str.split("{", 1);
+            var __constructor;
+            var code = "__constructor = " + header + ' {  \
+                var obj = create(F);\
+                obj.init.apply(obj, arguments);\
+                return obj;\
+            };';
+            eval(code);
+            F.create = __constructor;
+        } else {
+            F.create = function() {
+                return create(F);
             };
-            return obj;
-        };
+        }
 
         return F;
     }

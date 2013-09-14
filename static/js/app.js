@@ -2,31 +2,24 @@
 (function(){
 "use strict";
 
-    var module = angular.module('login', []);
+    var module = angular.module('chat', ['chat.login', 'chat.dash']);
 
     module.
-        factory('$ws', function(){
-            var ws_inst;
-
-            ws_inst = new TC.WS();
-            return ws_inst;
+        factory('$ws', TC.WS.create).
+        factory('$sid', TC.SessionStorage.create).
+        factory("$ds", function($ws, $sid){
+            return TC.SidDataSource.create($ws, $sid);
         }).
-        factory('$connection', function($ws){
-            var connection = TC.Connection.create($ws);
-            console.log("Created connection instance", connection, $ws);
-            return connection;
-        });
+        factory('$connection', TC.Connection.create);
 
     module.
       config(['$routeProvider', function($routeProvider) {
       $routeProvider.
-          when('/login', {templateUrl: 'static/partials/login.html',   controller: TC.LoginCtrl}).
-          when('/dash', {templateUrl: 'static/partials/dash.html', controller: TC.DashCtrl}).
           when('/chat/:chatId', {templateUrl: 'static/partials/chat.html', controller: TC.ChatCtrl}).
           otherwise({redirectTo: '/login'});
     }]).
-    run([ "$connection", function($connection){
-        $connection.open('websocket');
+    run([ "$ds", function($ds){
+        $ds.open('websocket');
     }]);
 
 })();

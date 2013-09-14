@@ -9,27 +9,62 @@
         'AUTHENTICATED': 'authenticated'
     };
 
+    TC.SessionStorage = TC.Class(TC.Object, {
+        _sid: null,
+        setSid: function(sid){
+            this._sid = sid;
+        },
+        getSid: function(){
+            return  this._sid;
+        }
+    });
+
+    TC.SidDataSource = TC.Class(TC.DataSource, {
+        init: function($ds, $sid) {
+            this.$ds = $ds;
+            this.$sid = $sid;
+        },
+
+        open: function(path) {
+            return this.$ds.open(path);
+        },
+
+        get: function(args) {
+            var copied = angular.copy(args);
+            copied.sid = this.$sid.getSid();
+            copied.action = 'get';
+            return this.$ds.send(copied);
+        },
+
+        send: function(args) {
+            var copied = angular.copy(args);
+            copied.sid = this.$sid.getSid();
+            return this.$ds.send(copied);
+        }
+    });
+
     TC.Connection = TC.Class(TC.Observable, {
-        init: function ($ws) {
+        init: function ($ds, $sid) {
             this.super();
-            this.$ws = $ws;
-            this.$ws.on('open', this._onOpen.bind(this));
-            this.$ws.on('close', this._onClose.bind(this));
+            this.$ds = $ds;
             this.setStatus(TC.CONNECTION_STATUS.OFFLINE);
-            this._sid = null;
+            this.$sid = $sid;
         },
-        _onClose: function() {
-            console.log("Connection closed");
-        },
-        _onOpen: function() {
-            console.log("Connection opened");
-        },
-        open: function (path) {
-            this.$ws.open(path);
+
+        get: function(route, data, callback) {
+            return this.$ds.get({
+                route:route,
+                data: data,
+                callback: callback
+            });
         },
 
         send: function(route, data, callback) {
-            this.$ws.send(route, data, callback, this._sid);
+            return this.$ds.send({
+                route:route,
+                data: data,
+                callback: callback
+            });
         },
 
         setStatus: function(status){
@@ -38,25 +73,27 @@
         },
 
         login: function (username, password) {
-            this.$ws.send('login', {
+            this.send('login', {
                 "username": username,
                 "password": password
             }, this._onLogin.bind(this));
             this.setStatus(TC.CONNECTION_STATUS.AUTHENTICATING);
         },
         register: function(username, password) {
-            this.$ws.send('register', {
+            this.send('register', {
                 'username': username,
                 'password': password
             })
         },
         _onLogin: function(data) {
             if (data.sid) {
-                this._sid = data.sid;
+                this.$sid.setSid(data.sid);
             }
             this.setStatus(TC.CONNECTION_STATUS.AUTHENTICATED);
             console.log("Login response", data);
         }
     });
+
+
 
 })();
