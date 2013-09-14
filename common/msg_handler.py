@@ -100,13 +100,29 @@ class MsgHandler(object):
 
 class BusinessMsgHandler(MsgHandler):
     __abstract__ = True
-    FORM = None
-    METHOD = None
+    ALLOWED_ACTIONS = ('SEND', 'GET', 'DELETE')
+    FORM_SEND = None
+    METHOD_SEND = None
+    FORM_GET = None
+    METHOD_GET = None
+    FORM_DELETE = None
+    METHOD_DELETE = None
 
     def do_call(self, message):
-        form = self.FORM(MultiDict(message.get_body()))
+        action = message.get_action().upper()
+
+        if action not in self.ALLOWED_ACTIONS:
+            return BusinessResponse.response_invalid_action(action)
+
+        FORM = getattr(self, 'FORM_' + action)
+        METHOD = getattr(self, 'METHOD_' + action)
+
+        if FORM is None or METHOD is None:
+            return BusinessResponse.response_invalid_action(action)
+
+        form = FORM(MultiDict(message.get_body()))
         if form.validate():
             data = form.data
-            return self.METHOD(**data)
+            return METHOD(**data)
         else:
             return BusinessResponse.response_invalid_data(form.errors)

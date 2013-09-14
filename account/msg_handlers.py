@@ -43,11 +43,11 @@ class RegisterForm(form.Form):
 
 class LoginHandler(BusinessMsgHandler):
     route = "login"
-    FORM = RegisterForm
-    METHOD = login
+    FORM_SEND = RegisterForm
+    METHOD_SEND = login
 
 
 class RegisterHandler(BusinessMsgHandler):
     route = "register"
-    METHOD = register
-    FORM = RegisterForm
+    METHOD_SEND = register
+    FORM_SEND = RegisterForm

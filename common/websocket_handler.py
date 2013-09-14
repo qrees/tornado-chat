@@ -22,8 +22,8 @@ class WebSocketRouter(tornado.websocket.WebSocketHandler):
         :param : raw message in json format
         """
         json_message = json.loads(message)
-        msg_handlers = route_to_handler(json_message['route'])
         message = Message.from_json(json_message=json_message, handler=self)
+        msg_handlers = route_to_handler(message.get_route())
         ioloop = IOLoop.current()
 
         for msg_handler_cls in msg_handlers:
