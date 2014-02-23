@@ -9,14 +9,17 @@ from common.business_logic import BusinessResponse
 from common.exceptions import HandlerNotFound
 from common.hacks import MultiDict
 
+logger = logging.getLogger(__name__)
+
 
 class MsgHandlerRegistry(object):
     basic_routes = None
     routes = None
 
-    def __init__(self):
+    def __init__(self, app):
         self.basic_routes = {}
         self.routes = []
+        self._app = app
 
     def validate(self, cls):
         if isinstance(cls.route, abc.abstractproperty):
@@ -24,7 +27,7 @@ class MsgHandlerRegistry(object):
 
     def register(self, cls):
         route = cls.route
-        logging.debug("Registering route '%s' with %r" % (route, cls))
+        logger.debug("Registering route '%s' with %r" % (route, cls))
         self.validate(cls)
         if isinstance(route, six.string_types):
             self.basic_routes[route] = cls
@@ -39,43 +42,21 @@ class MsgHandlerRegistry(object):
         except KeyError:
             raise HandlerNotFound()
 
-_registry = None
-
-
-def get_registry():
-    global _registry
-    if _registry is None:
-        _registry = MsgHandlerRegistry()
-    return _registry
-
-
-class MetaMsgHandler(abc.ABCMeta):
-
-    def __new__(mcs, name, bases, attributes):
-        if attributes.get('__abstract__', False):
-            is_abstract = True
-            del attributes['__abstract__']
-        else:
-            is_abstract = False
-
-        cls = super(MetaMsgHandler, mcs).__new__(mcs, name, bases, attributes)
-
-        if not is_abstract:
-            get_registry().register(cls)
-
-        return cls
-
-
+        
 class MsgHandler(object):
-    __metaclass__ = MetaMsgHandler
+    __metaclass__ = abc.ABCMeta
     __abstract__ = True
+
+    def __init__(self, app):
+        self._app = app
 
     @abc.abstractproperty
     def route(self):
         pass
 
+    @abc.abstractmethod
     def do_call(self, message):
-        return None
+        pass
 
     @gen.coroutine
     def call(self, message):
@@ -84,15 +65,15 @@ class MsgHandler(object):
                 try:
                     result = self.do_call(message=message)
                     callback(result)
-                except Exception, e:
-                    logging.exception("Exception when calling message handler in %r" % (self,))
+                except Exception as e:
+                    logger.exception("Exception when calling message handler in %r" % (self,))
                     raise
-            logging.debug("Start task")
+            logger.debug("Start task")
             response = yield gen.Task(tornado.stack_context.wrap(wrap),)
-            logging.debug("end task")
+            logger.debug("end task")
             message.respond(response)
         except Exception, e:
-            logging.exception("Failure in coroutine")
+            logger.exception("Failure in coroutine")
 
     def result(self, future):
         pass
@@ -108,17 +89,33 @@ class BusinessMsgHandler(MsgHandler):
     FORM_DELETE = None
     METHOD_DELETE = None
 
+    def __init__(self, app):
+        super(BusinessMsgHandler, self).__init__(app)
+        if self.FORM_SEND:
+            self._form_send = self.FORM_SEND(self._app)
+        if self.FORM_GET:
+            self._form_get = self.FORM_GET(self._app)
+        if self.FORM_DELETE:
+            self._form_delete = self.FORM_DELETE(self._app)
+
+        if self.METHOD_SEND:
+            self._method_send = self.METHOD_SEND(self._app)
+        if self.METHOD_GET:
+            self._method_get = self.METHOD_GET(self._app)
+        if self.METHOD_DELETE:
+            self._method_delete = self.METHOD_DELETE(self._app)
+
     def do_call(self, message):
         action = message.get_action().upper()
 
         if action not in self.ALLOWED_ACTIONS:
             return BusinessResponse.response_invalid_action(action)
 
-        FORM = getattr(self, 'FORM_' + action)
-        METHOD = getattr(self, 'METHOD_' + action)
+        FORM = getattr(self, '_form_' + action.lower())
+        METHOD = getattr(self, '_method_' + action.lower())
 
-        if FORM is None or METHOD is None:
-            return BusinessResponse.response_invalid_action(action)
+        assert FORM is not None
+        assert METHOD is not None
 
         form = FORM(MultiDict(message.get_body()))
         if form.validate():

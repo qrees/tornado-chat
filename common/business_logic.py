@@ -1,6 +1,4 @@
-import functools
 import logging
-from common.db import get_session, get_db
 
 
 class BusinessResponse(object):
@@ -31,24 +29,27 @@ class BusinessResponse(object):
     @classmethod
     def response_invalid_data(cls, data):
         return BusinessResponse(status=BusinessResponse.STATUS_INVALID, data=data)
-        pass
 
 
-class business_method(object):
-    def __init__(self, func):
-        self.func = func
-        functools.wraps(func)(self)
+class BusinessMethod(object):
+    RESPONSE_CLASS = BusinessResponse
+
+    def __init__(self, app):
+        self._app = app
+
+    def _perform(self, **kwargs):
+        raise NotImplemented("_perform of %r has to be implemented" % (self,))
 
     def __call__(self, **kwargs):
-        db = get_db()
-        session = get_session()
+        db = self._app.db
+        # session = get_session()
         # noinspection PyBroadException
         try:
-            response = self.func(**kwargs)
+            response = self._perform(**kwargs)
             db.commit_session()
         except Exception, e:
             logging.exception("Exception when calling business method")
-            response = BusinessResponse.response_exception(e)
+            response = self.RESPONSE_CLASS.response_exception(e)
             db.rollback_session()
         finally:
             pass

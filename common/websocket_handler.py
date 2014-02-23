@@ -3,10 +3,25 @@ import sys
 from tornado.ioloop import IOLoop
 import tornado.websocket
 from common.message import Message
-from common.router import route_to_handler
+# from common.router import route_to_handler
+
+
+class WebSocketRouterFactory(object):
+
+    def __init__(self, app):
+        self._app = app
+
+    def __call__(self, *args, **kwargs):
+        router = WebSocketRouter(self._app, *args, **kwargs)
+        return router
 
 
 class WebSocketRouter(tornado.websocket.WebSocketHandler):
+
+    def __init__(self, app, *args, **kwargs):
+        self._app = app
+        super(WebSocketRouter, self).__init__(*args, **kwargs)
+
     def open(self):
         print "WebSocket opened"
 
@@ -23,7 +38,7 @@ class WebSocketRouter(tornado.websocket.WebSocketHandler):
         """
         json_message = json.loads(message)
         message = Message.from_json(json_message=json_message, handler=self)
-        msg_handlers = route_to_handler(message.get_route())
+        msg_handlers = self._app.msg_handler_registry.match(message.get_route())
         ioloop = IOLoop.current()
 
         for msg_handler_cls in msg_handlers:

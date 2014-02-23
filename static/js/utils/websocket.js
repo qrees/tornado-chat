@@ -102,9 +102,15 @@
 
         send: function(args) {
             return this._send(args);
+            // TODO : what to do when status is not OPEN ?
+//            self._queue.push(args);
         },
 
         _send: function(args) {
+            if (this.status !== WebSocket.OPEN){
+                console.error("Cannot send ", args, "Websocket is not open");
+                return
+            }
             var route = args.route;
             var data = args.data;
             var sid = args.sid;
@@ -124,8 +130,10 @@
                 if (args.callback) {
                     args.callback(parsed_data);
                 }
-            }
-            this.message_callbacks[id] = inner_callback();
+            };
+
+            console.log("new message handler", id, args.callback);
+            this.message_callbacks[id] = inner_callback;
 
             var message = {
                 id: id,
