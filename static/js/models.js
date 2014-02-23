@@ -20,35 +20,37 @@
     });
 
     TC.SidDataSource = TC.Class(TC.DataSource, {
-        init: function($ds, $sid) {
-            this.$ds = $ds;
+        init: function($ws, $sid) {
+            this.$ws = $ws;
             this.$sid = $sid;
         },
 
         open: function(path) {
-            return this.$ds.open(path);
+            return this.$ws.open(path);
         },
 
         get: function(args) {
             var copied = angular.copy(args);
             copied.sid = this.$sid.getSid();
             copied.action = 'get';
-            return this.$ds.send(copied);
+            return this.$ws.send(copied);
         },
 
         send: function(args) {
             var copied = angular.copy(args);
             copied.sid = this.$sid.getSid();
-            return this.$ds.send(copied);
+            copied.action = 'send';
+            return this.$ws.send(copied);
         }
     });
 
     TC.Connection = TC.Class(TC.Observable, {
-        init: function ($ds, $sid) {
+        init: function ($ds, $sid, $rootScope) {
             this.super();
             this.$ds = $ds;
             this.setStatus(TC.CONNECTION_STATUS.OFFLINE);
             this.$sid = $sid;
+            this.$rootScope = $rootScope;
         },
 
         get: function(route, data, callback) {
@@ -73,10 +75,16 @@
         },
 
         login: function (username, password) {
+            var that = this;
             this.send('login', {
                 "username": username,
                 "password": password
-            }, this._onLogin.bind(this));
+            }, function(){
+                var args = arguments;
+                that.$rootScope.$apply(function(){
+                    that._onLogin.apply(that, args);
+                });
+            });
             this.setStatus(TC.CONNECTION_STATUS.AUTHENTICATING);
         },
         register: function(username, password) {
@@ -86,10 +94,12 @@
             })
         },
         _onLogin: function(data) {
-            if (data.sid) {
-                this.$sid.setSid(data.sid);
+            if (data.body.sid) {
+                this.$sid.setSid(data.body.sid);
+                this.setStatus(TC.CONNECTION_STATUS.AUTHENTICATED);
+            }else{
+                this.setStatus(TC.CONNECTION_STATUS.OFFLINE);
             }
-            this.setStatus(TC.CONNECTION_STATUS.AUTHENTICATED);
             console.log("Login response", data);
         }
     });

@@ -17,6 +17,21 @@
         init: function($q) {
             this.super();
             this.$q = $q;
+            this._queue = [];
+        },
+
+        _process_queue: function(){
+            if(this.ws.readyState === WebSocket.OPEN){
+                // TODO : handle partial success
+                for (var i = 0; i < this._queue.length; i++){
+                    var message = this._queue[i];
+                    console.log("OUT", message);
+                    this.ws.send(JSON.stringify(message));
+                }
+                this._queue = [];
+            }else{
+                console.warn("WebSocket is not open, skipping queue");
+            }
         },
 
         onopen: function(evt) {
@@ -26,6 +41,8 @@
             for (var i = 0; i < this.open_handlers.length; i += 1) {
                 this.open_handlers[i](evt);
             }
+
+            this._process_queue();
         },
 
         onclose: function(evt) {
@@ -34,9 +51,9 @@
             for (var i = 0; i < this.close_handlers.length; i += 1) {
                 this.close_handlers[i](evt);
             }
-            console.log("Reconnecting in ", timeout);
-            setTimeout(angular.bind(this, _open, path), timeout);
-            if (this.timeout * 2 < max_timeout)
+            console.log("Reconnecting in ", this.timeout);
+            setTimeout(angular.bind(this, this._open, this.path), this.timeout);
+            if (this.timeout * 2 < this.max_timeout)
                 this.timeout = this.timeout * 2;
         },
 
@@ -102,15 +119,9 @@
 
         send: function(args) {
             return this._send(args);
-            // TODO : what to do when status is not OPEN ?
-//            self._queue.push(args);
         },
 
         _send: function(args) {
-            if (this.status !== WebSocket.OPEN){
-                console.error("Cannot send ", args, "Websocket is not open");
-                return
-            }
             var route = args.route;
             var data = args.data;
             var sid = args.sid;
@@ -123,7 +134,6 @@
             var id = Math.random().toString();
 
             var deferred = this.$q.defer();
-//            var promise = deferred.promise;
 
             var inner_callback = function inner_callback(parsed_data) {
                 deferred.resolve(parsed_data);
@@ -143,9 +153,10 @@
                 action: action
             };
 
-            console.debug("OUT", message);
-            this.ws.send(JSON.stringify(message));
-            return deferred;
+            this._queue.push(message);
+            this._process_queue();
+
+            return deferred.promise;
         }
     });
 

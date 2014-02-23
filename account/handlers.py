@@ -8,13 +8,6 @@ class MainHandler(tornado.web.RequestHandler):
         template = FileTemplate("index.html")
         self.write(template.render())
 
-def simple_factory(class_):
-
-    def wrapper(app):
-        return class_
-
-    return wrapper
-
 
 handlers = [
     (r"/", lambda app: MainHandler),

@@ -1,8 +1,5 @@
 
-INSTALLED_APPS = [
-    'account'
-]
-
 COMPONENTS = [
-    'account.component.AccountComponent'
+    'account.component.AccountComponent',
+    'contacts.component.ContactsComponent'
 ]

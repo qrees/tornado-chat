@@ -1,6 +1,7 @@
 from account.handlers import handlers
-from account import models
-from account.msg_handlers import RegisterHandler, LoginHandler, HandlerFactory
+from account.business_logic import RegisterHandler, LoginHandler
+from account.models import Session
+from common.msg_handler import HandlerFactory
 
 
 class AccountComponent(object):
@@ -16,6 +17,11 @@ class AccountComponent(object):
 
         self._app.msg_handler_registry.register(HandlerFactory(LoginHandler, self._app))
         self._app.msg_handler_registry.register(HandlerFactory(RegisterHandler, self._app))
+
+    def user_from_sid(self, sid):
+        session = self._app.db.session()
+        user = session.query(Session).filter_by(id=sid).first()
+        return user
 
     def create(self):
         self._as_component()

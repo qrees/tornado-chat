@@ -4,11 +4,11 @@
             throw Error("Not implemented");
         },
 
-        get: function(){
+        get: function(payload){
             throw Error("Not implemented");
         },
 
-        send: function(){
+        send: function(payload){
             throw Error("Not implemented");
         }
     });

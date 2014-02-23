@@ -30,7 +30,10 @@
             return TC.Entity.create();
         },
         runQuery: function(query) {
-            var ws_deferred = this.$dataSource.get('resourse.' + this.name, query.getParams());
+            var ws_deferred = this.$dataSource.get({
+                'route': 'resource.' + this.name,
+                'data': query.getParams()
+            });
 
             ws_deferred.then(this._handleQueryResult.bind(this).curry(query));
             return query;

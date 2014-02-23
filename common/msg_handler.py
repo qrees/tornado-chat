@@ -7,7 +7,6 @@ from tornado import gen
 
 from common.business_logic import BusinessResponse
 from common.exceptions import HandlerNotFound
-from common.hacks import MultiDict
 
 logger = logging.getLogger(__name__)
 
@@ -26,9 +25,9 @@ class MsgHandlerRegistry(object):
             raise Exception("%r has no 'route' attribute defined" % cls)
 
     def register(self, cls):
+        self.validate(cls)
         route = cls.route
         logger.debug("Registering route '%s' with %r" % (route, cls))
-        self.validate(cls)
         if isinstance(route, six.string_types):
             self.basic_routes[route] = cls
         elif six.callable(route):
@@ -39,10 +38,10 @@ class MsgHandlerRegistry(object):
     def match(self, route):
         try:
             return [self.basic_routes[route]]
-        except KeyError:
-            raise HandlerNotFound()
+        except KeyError as e:
+            raise HandlerNotFound("Could not find handler for route %r" % (route,))
 
-        
+
 class MsgHandler(object):
     __metaclass__ = abc.ABCMeta
     __abstract__ = True
@@ -79,47 +78,38 @@ class MsgHandler(object):
         pass
 
 
+class HandlerFactory(object):
+
+    def __init__(self, class_, app):
+        self._app = app
+        self._class = class_
+
+    def __call__(self, *args, **kwargs):
+        return self._class(self._app, *args, **kwargs)
+
+    @property
+    def route(self):
+        return self._class.route
+
+
 class BusinessMsgHandler(MsgHandler):
     __abstract__ = True
+    ACTIONS = {}
     ALLOWED_ACTIONS = ('SEND', 'GET', 'DELETE')
-    FORM_SEND = None
-    METHOD_SEND = None
-    FORM_GET = None
-    METHOD_GET = None
-    FORM_DELETE = None
-    METHOD_DELETE = None
 
     def __init__(self, app):
         super(BusinessMsgHandler, self).__init__(app)
-        if self.FORM_SEND:
-            self._form_send = self.FORM_SEND(self._app)
-        if self.FORM_GET:
-            self._form_get = self.FORM_GET(self._app)
-        if self.FORM_DELETE:
-            self._form_delete = self.FORM_DELETE(self._app)
+        self._actions = {}
 
-        if self.METHOD_SEND:
-            self._method_send = self.METHOD_SEND(self._app)
-        if self.METHOD_GET:
-            self._method_get = self.METHOD_GET(self._app)
-        if self.METHOD_DELETE:
-            self._method_delete = self.METHOD_DELETE(self._app)
+        # actions are BusnessMethodFactory from common.business_logic
+        for action, handler in self.ACTIONS.items():
+            self._actions[action] = handler(self._app)
 
     def do_call(self, message):
-        action = message.get_action().upper()
+        action = message.get_action().lower()
 
-        if action not in self.ALLOWED_ACTIONS:
+        if action not in self.ACTIONS:
             return BusinessResponse.response_invalid_action(action)
 
-        FORM = getattr(self, '_form_' + action.lower())
-        METHOD = getattr(self, '_method_' + action.lower())
-
-        assert FORM is not None
-        assert METHOD is not None
-
-        form = FORM(MultiDict(message.get_body()))
-        if form.validate():
-            data = form.data
-            return METHOD(**data)
-        else:
-            return BusinessResponse.response_invalid_data(form.errors)
+        method_factory = self._actions[action]
+        return method_factory(message)

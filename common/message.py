@@ -3,13 +3,17 @@ import logging
 
 class Message(object):
 
-    def __init__(self, id, request, body, handler, route, action):
+    def __init__(self, id, request, body, handler, route, action, sid=None):
         self._request = request
         self._body = body
         self._handler = handler
         self._id = id
         self._route = route
         self._action = action
+        self._sid = sid
+
+    def get_sid(self):
+        return self._sid
 
     def get_body(self):
         return self._body
@@ -26,6 +30,7 @@ class Message(object):
         msg_id = json_message['id']
         msg_route = json_message['route']
         msg_action = json_message.get('action', 'get')
+        msg_sid = json_message.get('sid', None)
 
         message = Message(
             id=msg_id,
@@ -33,7 +38,8 @@ class Message(object):
             body=msg_body,
             handler=handler,
             route=msg_route,
-            action=msg_action)
+            action=msg_action,
+            sid=msg_sid)
         return message
 
     def respond(self, response):

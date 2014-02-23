@@ -58,8 +58,14 @@ class ComponentRegistry(object):
         self._factories = set()
         self._components = {}
 
+    def __getitem__(self, item):
+        return self._components[item]
+
     def add_factory(self, factory):
         self._factories.add(factory)
+
+    def get_component(self, name):
+        return self._components[name]
 
     def bootstrap(self):
         for factory in self._factories:
