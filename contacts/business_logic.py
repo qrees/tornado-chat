@@ -17,5 +17,5 @@ class ContactsMethod(BusinessMethod):
 
 
 class ContactsHandler(BusinessMsgHandler):
-    route = "resource.contacts"
+    route = "resource.contact"
     ACTIONS = {'get': simple_business_method_factory(ContactsMethod)}

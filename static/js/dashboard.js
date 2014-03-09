@@ -1,22 +1,15 @@
 (function(){
     "use strict";
 
-    TC.Contacts = TC.Class(TC.Table, {
-        name: 'contacts'
-    });
-
     var module = angular.module('chat.dash', []);
 
-    module.
-        factory('$contacts', function($ds){
-            return TC.Contacts.create($ds);
-        });
+    module.run(function(tableRegistry){
+        var factory = new TC.ModelFactory('contact', TC.models.Contact);
 
+        tableRegistry.registerModel(factory);
+    });
 
-    var DashCtrl = function($scope, $connection, $location, $contacts) {
-        var query = $contacts.query();
-        $scope.contacts = query.load().items();
-
+    var DashCtrl = function($scope, $connection, $location, db) {
         $scope.name = '';
         $scope.talk = function(){
             if ($scope.name){
@@ -24,7 +17,9 @@
             } else {
                 $scope.error = "You need to enter name";
             }
-        }
+        };
+
+        $scope.stream = db.stream('contact');
     };
 
     module.

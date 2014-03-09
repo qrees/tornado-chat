@@ -1,7 +1,7 @@
 (function(){
     "use strict";
 
-    var module = angular.module('chat.login', [])
+    var module = angular.module('chat.login', []);
 
     TC.LoginCtrl = function($scope, $routeParams, $connection, $location) {
         $scope.username = '';
@@ -24,7 +24,7 @@
 
         console.log('test');
 
-        $scope.$on('$routeChangeStart', function(next, current) {
+        $scope.$on('$routeChangeStart', function() {
             $connection.off(status_event_id)
         });
     };

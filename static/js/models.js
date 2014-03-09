@@ -11,7 +11,11 @@
 
     TC.SessionStorage = TC.Class(TC.Object, {
         _sid: null,
+        init: function(){
+           this._sid = localStorage.getItem('sid');
+        },
         setSid: function(sid){
+            localStorage.setItem('sid', sid);
             this._sid = sid;
         },
         getSid: function(){
