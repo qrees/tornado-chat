@@ -6,9 +6,10 @@ from common.db import Base
 
 
 def start_app(args):
+    print "Listening on: %s:%s" % (args.host, args.port)
     app = make_app()
     listener = app.get_listener()
-    listener.listen(8888)
+    listener.listen(args.port)
     ioloop = tornado.ioloop.IOLoop.instance()
     tornado.autoreload.start(ioloop)
     ioloop.start()
