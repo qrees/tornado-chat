@@ -1,3 +1,5 @@
+find static/ts -iname \*.ts | xargs tsc --sourcemap
+
 find static/ts -iname \*.ts | ./bin/entr +notify &
 sleep 1
 
