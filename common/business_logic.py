@@ -89,6 +89,11 @@ class BusinessMethod(object):
             return e.response
 
         try:
+            authorized = self._authorize(data)
+        except AuthorizationError as e:
+            return e.response
+
+        try:
             response = self._perform(**data)
             db.commit_session()
         except Exception, e:
