@@ -1,12 +1,26 @@
 /// <reference path="../references.ts"/>
 
 module TC.data_source {
-    declare var WebSocket;
 
     export class MessageHandler {
         constructor(
             public route: RegExp,
             public handler: Function) {
+
+        }
+    }
+
+    export class WebSocketWrapper {
+        private _url: string;
+        onopen: Function;
+        onclose: Function;
+        onmessage: Function;
+
+        constructor(url: string){
+            this._url = url;
+        }
+
+        reopen(){
 
         }
     }
@@ -18,7 +32,7 @@ module TC.data_source {
         CLOSED
     }
 
-    class RawMessage {
+    export class RawMessage {
         constructor(
             public id: string,
             public route: string,
@@ -29,15 +43,47 @@ module TC.data_source {
         }
     }
 
-    export interface Connector {
+    export class ConnectorRegistry extends TC.utils.ListRegistry<Connector> { }
 
+    export interface Connector {
+        handle(queue:RawMessage[]): RawMessage[];
+    }
+
+    export class WSConnector implements Connector {
+        constructor(private ws: ReconnectingWebSocket){
+            if(ws === null || ws === undefined)
+                throw Error("ws cannot be null or undefined");
+        }
+
+        private matches(message:RawMessage): boolean {
+            return true;
+        }
+
+        handle(queue: RawMessage[]): RawMessage[] {
+            var processed: RawMessage[] = [];
+
+            if(this.ws.readyState === WebSocket.OPEN){
+                for (var i:number = 0; i < queue.length; i++){
+                    var message: RawMessage = queue[i];
+                    if(!this.matches(message))
+                        continue;
+                    this.send(message);
+                    processed.push(message);
+                }
+            }else{
+                console.warn("WebSocket is not open, skipping queue");
+            }
+            return processed;
+        }
+
+        private send(message:RawMessage) {
+            console.log("OUT", message);
+            this.ws.send(JSON.stringify(message));
+        }
     }
 
     export class WS extends TC.data_source.DataSource {
-        private ws: any;  // TODO: websocket;
-        private initial_timeout: number = 1000;
-        private max_timeout: number = 8000;
-        private timeout: number = 1000;
+        private ws: ReconnectingWebSocket;
 
         private close_handlers: any[] = [];
         private open_handlers: any[] = [];
@@ -45,37 +91,53 @@ module TC.data_source {
         private message_handlers: MessageHandler[] = [];
 
         private status: WebSocketStatus;
-        private path: string;
         private $q: ng.IQService;
         private _queue: RawMessage[] = [];
-        private _connectorRegistry: Connector[] = [];
+        private _connectorRegistry: ConnectorRegistry;
 
-        constructor($q: ng.IQService, connectorRegistry){
+        constructor(
+            $q: ng.IQService,
+            connectorRegistry: ConnectorRegistry,
+            ws: ReconnectingWebSocket){
             super();
             this.$q = $q;
             this._queue = [];
             this._connectorRegistry = connectorRegistry;
+            if(ws === null || ws === undefined)
+                throw Error("ws cannot be null or undefined");
+
+            this.ws = ws;
+            this.ws.onopen = angular.bind(this, this._onopen);
+            this.ws.onclose = angular.bind(this, this._onclose);
+            this.ws.onmessage = angular.bind(this, this._onmessage);
         }
 
         private _process_queue(){
-            if(this.ws.readyState === WebSocket.OPEN){
-                // TODO : handle partial success
-                for (var i:number = 0; i < this._queue.length; i++){
-                    var message = this._queue[i];
-                    console.log("OUT", message);
-                    this.ws.send(JSON.stringify(message));
-                }
-                this._queue = [];
-            }else{
+            if(this.ws.readyState !== WebSocket.OPEN){
                 console.warn("WebSocket is not open, skipping queue");
+                return;
+            }
+
+            var processed: RawMessage[];
+            var connectors: Connector[] = this._connectorRegistry.getItems();
+
+            for (var i:number = 0; i < connectors.length; i++){
+                var connector:Connector = connectors[i];
+                processed = connector.handle(this._queue);
+                this._queue = this._queue.filter(function(obj){
+                    return processed.indexOf(obj) < 0;
+                })
+            }
+
+            if (this._queue.length > 0){
+                console.warn("Some messages have not been processed", this._queue);
             }
         }
 
         private _onopen(evt) {
-            this.timeout = this.initial_timeout;
             console.log("Web socket opened", evt);
             this.status = WebSocketStatus.OPEN;
-            for (var i = 0; i < this.open_handlers.length; i += 1) {
+            for (var i:number = 0; i < this.open_handlers.length; i += 1) {
                 this.open_handlers[i](evt);
             }
 
@@ -85,13 +147,6 @@ module TC.data_source {
         private _onclose(evt) {
             console.log("Web socket closed", evt);
             this.status = WebSocketStatus.CONNECTING;
-            for (var i:number = 0; i < this.close_handlers.length; i += 1) {
-                this.close_handlers[i](evt);
-            }
-            console.log("Reconnecting in ", this.timeout);
-            setTimeout(angular.bind(this, this._open, this.path), this.timeout);
-            if (this.timeout * 2 < this.max_timeout)
-                this.timeout = this.timeout * 2;
         }
 
         private _onmessage(evt) {
@@ -114,17 +169,13 @@ module TC.data_source {
             }
         }
 
-        _open(path: string) {
+        _open() {
             console.log("Opening");
-            this.path = path;
-            this.ws = new WebSocket(this.path);
-            this.ws.onopen = angular.bind(this, this._onopen);
-            this.ws.onclose = angular.bind(this, this._onclose);
-            this.ws.onmessage = angular.bind(this, this._onmessage);
+            this.ws.connect();
         }
 
-        open(path: string) {
-            this._open("ws://" + location.host + "/" + path);
+        open() {
+            this._open();
             this.status = WebSocketStatus.CONNECTING;
         }
 

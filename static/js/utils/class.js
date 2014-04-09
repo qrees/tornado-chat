@@ -1,8 +1,7 @@
-(function () {
-    "use strict";
 
-    var TC = {};
-    window.TC = TC;
+var TC;
+(function (TC) {
+    "use strict";
 
 // Function.prototype.bind polyfill from MDN.
     if (!Function.prototype.bind) {
@@ -170,4 +169,4 @@
 
     Observable(TC.Observable.prototype);
 
-})();
+})(TC || (TC = {}));

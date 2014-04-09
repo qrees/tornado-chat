@@ -8,14 +8,22 @@
         'chat.directives']);
 
     module.
-        factory('$ws', function($q){
-            return new TC.data_source.WS($q);
+        factory('webSocket', function(){
+            var path = "ws://" + location.host + "/" + "websocket";
+            return new ReconnectingWebSocket(path);
+        }).
+        factory('$ws', function($q, connectorRegistry, webSocket){
+            connectorRegistry.register(new TC.data_source.WSConnector(webSocket));
+            return new TC.data_source.WS($q, connectorRegistry, webSocket);
         }).
         factory('$sid', TC.SessionStorage.create).
         factory("$ds", function($ws, $sid){
             return TC.SidDataSource.create($ws, $sid);
         }).
         factory('$connection', TC.Connection.create).
+        factory('connectorRegistry', function(){
+            return new TC.data_source.ConnectorRegistry();
+        }).
         factory('tableRegistry', function(){
             return new TC.ModelRegistry();
         }).
