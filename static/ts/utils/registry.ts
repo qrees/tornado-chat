@@ -13,7 +13,7 @@ module TC.utils {
         }
 
         getItems(): T[] {
-            return this.items.slice();
+            return this.items.slice(0);
         }
     }
 }

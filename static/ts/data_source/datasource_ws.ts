@@ -92,14 +92,17 @@ module TC.data_source {
 
         private status: WebSocketStatus;
         private $q: ng.IQService;
+        private $rootScope: ng.IScope;
         private _queue: RawMessage[] = [];
         private _connectorRegistry: ConnectorRegistry;
 
         constructor(
+            $rootScope: ng.IScope,
             $q: ng.IQService,
             connectorRegistry: ConnectorRegistry,
             ws: ReconnectingWebSocket){
             super();
+            this.$rootScope = $rootScope;
             this.$q = $q;
             this._queue = [];
             this._connectorRegistry = connectorRegistry;
@@ -154,7 +157,7 @@ module TC.data_source {
             console.debug("IN", parsed_data);
             var message_id:string = parsed_data.id;
             var message_route:string = parsed_data.route;
-
+            console.log("_onmessage");
             if (message_id in this.message_callbacks) {
                 this.message_callbacks[message_id](parsed_data);
                 delete this.message_callbacks[message_id];
@@ -225,7 +228,10 @@ module TC.data_source {
 
             var deferred = this.$q.defer();
 
-            var inner_callback = function inner_callback(parsed_data) {
+            var inner_callback = (parsed_data) => {
+                this.$rootScope.$apply(function(){
+                    deferred.resolve(parsed_data);
+                });
                 deferred.resolve(parsed_data);
                 if (args.callback) {
                     args.callback(parsed_data);

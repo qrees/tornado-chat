@@ -12,9 +12,13 @@
             var path = "ws://" + location.host + "/" + "websocket";
             return new ReconnectingWebSocket(path);
         }).
-        factory('$ws', function($q, connectorRegistry, webSocket){
+        factory('$ws', function($rootScope, $q, connectorRegistry, webSocket){
             connectorRegistry.register(new TC.data_source.WSConnector(webSocket));
-            return new TC.data_source.WS($q, connectorRegistry, webSocket);
+            return new TC.data_source.WS(
+                $rootScope,
+                $q,
+                connectorRegistry,
+                webSocket);
         }).
         factory('$sid', TC.SessionStorage.create).
         factory("$ds", function($ws, $sid){
@@ -37,8 +41,10 @@
           when('/chat/:chatId', {templateUrl: 'static/partials/chat.html', controller: TC.ChatCtrl}).
           otherwise({redirectTo: '/login'});
     }]).
-    run([ "$ds", function($ds){
+    run(function($ds, $rootScope, db){
         $ds.open('websocket');
-    }]);
+        console.log($rootScope);
+        $rootScope.DB = db;
+    });
 
 })();

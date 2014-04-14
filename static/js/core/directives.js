@@ -12,7 +12,6 @@
             'replace': false,
             'transclude': false,
             link: function(scope, iElement, iAttrs, controller){
-//                var db = getDB();
                 var var_ = iAttrs['var'] || 'stream';
 
                 var ref = function() {
@@ -31,10 +30,10 @@
                 };
 
                 var destroy = function() {
-//                    scope.ankhDb.onChangedEvent.unregister(collect);
+                    scope.DB.onChangedEvent.unregister(collect);
                 };
-
-//                scope.ankhDb.onChangedEvent.register(collect);
+                console.log(scope.DB);
+                scope.DB.onChangedEvent.register(collect);
                 scope.$watch(ref, collect);
                 scope.$on('$destroy', destroy);
             }

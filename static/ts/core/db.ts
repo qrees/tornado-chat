@@ -19,15 +19,16 @@ module TC {
     }
 
     export class DB {
-        dataSource: TC.DataSource;
+        public dataSource: TC.DataSource;
         private modelRegistry: TC.ModelRegistry;
+        public onChangedEvent: TC.utils.EventDispatcher = new TC.utils.EventDispatcher();
 
         constructor(dataSource: TC.DataSource, modelRegistry: TC.ModelRegistry){
             this.dataSource = dataSource;
             this.modelRegistry = modelRegistry;
         }
 
-        stream(model_name){
+        stream(model_name): TC.Stream{
             var model_factory = this.modelRegistry.getModel(model_name);
             return new TC.Stream(this, model_factory);
         }
@@ -100,7 +101,7 @@ module TC {
                 'route': 'resource.' + this._factory.name,
                 'data': this.getParams()
             });
-
+            console.log("runQuery", ws_deferred);
             ws_deferred.then(this._handleQueryResult);
             return ws_deferred;
         }
@@ -114,7 +115,8 @@ module TC {
         }
 
         private _handleQueryResult(value: Mapping){
-            var data = value['data'];
+            var data = value['body'];
+            console.log(value);
             if (!angular.isArray(data)) {
                 throw new Error("Expected array in response");
             }

@@ -9,7 +9,7 @@
         tableRegistry.registerModel(factory);
     });
 
-    var DashCtrl = function($scope, $connection, $location, db) {
+    var DashCtrl = function($scope, $connection, $location) {
         $scope.name = '';
         $scope.talk = function(){
             if ($scope.name){
@@ -19,7 +19,7 @@
             }
         };
 
-        $scope.stream = db.stream('contact');
+        $scope.stream = $scope.DB.stream('contact');
     };
 
     module.
