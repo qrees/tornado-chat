@@ -1,17 +1,9 @@
 from uuid import uuid4
-from common import form
-from wtforms import fields
-from wtforms import validators
+from account.forms import RegisterForm
 
 from account.models import User, Session
 from common.business_logic import BusinessResponse, BusinessMethod, simple_business_method_factory
 from common.msg_handler import BusinessMsgHandler
-
-
-class RegisterForm(form.Form):
-    username = fields.TextField(u"Username",
-        [validators.required(), validators.regexp('[-a-zA-Z0-9]+'), validators.length(max=50)])
-    password = fields.PasswordField(u"Password", [validators.required()])
 
 
 class LoginMethod(BusinessMethod):

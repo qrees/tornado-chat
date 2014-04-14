@@ -9,6 +9,7 @@ class BusinessResponse(object):
     STATUS_INVALID = 'invalid'
     STATUS_UNSUPPORTED = 'unsupported'
     STATUS_UNAUTHORIZED = 'unauthorized'
+    STATUS_NOT_FOUND = 'not_found'
 
     def __init__(self, status=STATUS_OK, data=None, exception=None):
         self._status = status
@@ -41,6 +42,10 @@ class BusinessResponse(object):
     def response_unauthorized(cls, data):
         return BusinessResponse(status=BusinessResponse.STATUS_UNAUTHORIZED, data=data)
 
+    @classmethod
+    def response_not_found(cls, data):
+        return BusinessResponse(status=BusinessResponse.STATUS_NOT_FOUND, data=data)
+
 
 class ValidationError(BaseException):
 
@@ -62,6 +67,10 @@ def simple_business_method_factory(method):
 class BusinessMethod(object):
     RESPONSE_CLASS = BusinessResponse
     FORM = None
+
+    def get_user(self):
+        account = self._app.component_registry['account']
+        return account.user_from_sid(self._sid)
 
     def __init__(self, app, message):
         self._app = app
