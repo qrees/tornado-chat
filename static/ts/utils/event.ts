@@ -3,7 +3,7 @@
 module TC.utils {
 
     export interface Listener {
-        (Event): void;
+        (event: Event): void;
     }
 
     export class Event {

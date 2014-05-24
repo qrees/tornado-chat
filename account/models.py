@@ -9,7 +9,6 @@ from common.db import ModelBase
 logger = logging.getLogger(__name__)
 
 
-
 class User(ModelBase):
     __tablename__ = 'user'
     id = Column(String(256), primary_key=True)

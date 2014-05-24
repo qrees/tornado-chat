@@ -2,25 +2,14 @@
 
 module TC.data_source {
 
-    export class MessageHandler {
-        constructor(
-            public route: RegExp,
-            public handler: Function) {
-
-        }
+    interface ResponseHandler {
+        (response: TC.rest.RestResponse): void;
     }
 
-    export class WebSocketWrapper {
-        private _url: string;
-        onopen: Function;
-        onclose: Function;
-        onmessage: Function;
-
-        constructor(url: string){
-            this._url = url;
-        }
-
-        reopen(){
+    class MessageHandler {
+        constructor(
+            public route: RegExp,
+            public handler: ResponseHandler){
 
         }
     }
@@ -32,68 +21,18 @@ module TC.data_source {
         CLOSED
     }
 
-    export class RawMessage {
-        constructor(
-            public id: string,
-            public route: string,
-            public body: any,
-            public sid: string,
-            public action: string){
-
-        }
-    }
-
-    export class ConnectorRegistry extends TC.utils.ListRegistry<Connector> { }
-
-    export interface Connector {
-        handle(queue:RawMessage[]): RawMessage[];
-    }
-
-    export class WSConnector implements Connector {
-        constructor(private ws: ReconnectingWebSocket){
-            if(ws === null || ws === undefined)
-                throw Error("ws cannot be null or undefined");
-        }
-
-        private matches(message:RawMessage): boolean {
-            return true;
-        }
-
-        handle(queue: RawMessage[]): RawMessage[] {
-            var processed: RawMessage[] = [];
-
-            if(this.ws.readyState === WebSocket.OPEN){
-                for (var i:number = 0; i < queue.length; i++){
-                    var message: RawMessage = queue[i];
-                    if(!this.matches(message))
-                        continue;
-                    this.send(message);
-                    processed.push(message);
-                }
-            }else{
-                console.warn("WebSocket is not open, skipping queue");
-            }
-            return processed;
-        }
-
-        private send(message:RawMessage) {
-            console.log("OUT", message);
-            this.ws.send(JSON.stringify(message));
-        }
-    }
-
-    export class WS extends TC.data_source.DataSource {
+    export class WS implements TC.data_source.DataSource {
         private ws: ReconnectingWebSocket;
 
         private close_handlers: any[] = [];
         private open_handlers: any[] = [];
-        private message_callbacks: {[ident: string]: Function } = {};
+        private message_callbacks: {[ident: string]: ResponseHandler } = {};
         private message_handlers: MessageHandler[] = [];
 
         private status: WebSocketStatus;
         private $q: ng.IQService;
         private $rootScope: ng.IScope;
-        private _queue: RawMessage[] = [];
+        private _queue: TC.rest.RestRequest[] = [];
         private _connectorRegistry: ConnectorRegistry;
 
         constructor(
@@ -101,7 +40,6 @@ module TC.data_source {
             $q: ng.IQService,
             connectorRegistry: ConnectorRegistry,
             ws: ReconnectingWebSocket){
-            super();
             this.$rootScope = $rootScope;
             this.$q = $q;
             this._queue = [];
@@ -115,13 +53,13 @@ module TC.data_source {
             this.ws.onmessage = angular.bind(this, this._onmessage);
         }
 
-        private _process_queue(){
+        private _process_queue(): void {
             if(this.ws.readyState !== WebSocket.OPEN){
                 console.warn("WebSocket is not open, skipping queue");
                 return;
             }
 
-            var processed: RawMessage[];
+            var processed: TC.rest.RestRequest[];
             var connectors: Connector[] = this._connectorRegistry.getItems();
 
             for (var i:number = 0; i < connectors.length; i++){
@@ -137,7 +75,7 @@ module TC.data_source {
             }
         }
 
-        private _onopen(evt) {
+        private _onopen(evt: Event): void {
             console.log("Web socket opened", evt);
             this.status = WebSocketStatus.OPEN;
             for (var i:number = 0; i < this.open_handlers.length; i += 1) {
@@ -147,42 +85,52 @@ module TC.data_source {
             this._process_queue();
         }
 
-        private _onclose(evt) {
+        private _onclose(evt: CloseEvent): void {
             console.log("Web socket closed", evt);
             this.status = WebSocketStatus.CONNECTING;
         }
 
-        private _onmessage(evt) {
-            var parsed_data = JSON.parse(evt.data);
-            console.debug("IN", parsed_data);
-            var message_id:string = parsed_data.id;
-            var message_route:string = parsed_data.route;
+        private _responseFromString(data: string): TC.rest.RestResponse {
+            var parsed_data: any = JSON.parse(data);
+            var response: TC.rest.RestResponse = new TC.rest.RestResponse();
+            response.setId(parsed_data['id']);
+            response.setRoute(parsed_data['route']);
+            response.setBody(parsed_data['body']);
+            response.setStatus(parsed_data['status']);
+            return response;
+        }
+
+        private _onmessage(evt: MessageEvent): void {
+            var response: TC.rest.RestResponse = this._responseFromString(evt.data);
+            console.debug("IN", response);
+            var message_id: string = response.getId();
+            var message_route: string = response.getRoute();
             console.log("_onmessage");
             if (message_id in this.message_callbacks) {
-                this.message_callbacks[message_id](parsed_data);
+                this.message_callbacks[message_id](response);
                 delete this.message_callbacks[message_id];
             }
 
-            for (var i = 0; i < this.message_handlers.length; i += 1) {
-                var regexp = this.message_handlers[i].route;
-                var handler = this.message_handlers[i].handler;
+            for (var i: number = 0; i < this.message_handlers.length; i += 1) {
+                var regexp: RegExp = this.message_handlers[i].route;
+                var handler: ResponseHandler = this.message_handlers[i].handler;
                 if (regexp.test(message_route)) {
-                    handler(parsed_data);
+                    handler(response);
                 }
             }
         }
 
-        _open() {
+        private _open(): void {
             console.log("Opening");
             this.ws.connect();
         }
 
-        open() {
+        public open(): void {
             this._open();
             this.status = WebSocketStatus.CONNECTING;
         }
 
-        on(event_name: string, handler: Function, route?:string) {
+        public on(event_name: string, handler: Function, route?:string): void {
             if (route && (event_name !== "message")) {
                 throw new Error("Route argument is only valid for 'message' events.");
             }
@@ -210,42 +158,31 @@ module TC.data_source {
             throw new Error("Unknown event name: " + event_name);
         }
 
-        send(args) {
-            return this._send(args);
+        public send(request: TC.rest.RestRequest): ng.IPromise<TC.rest.RestResponse> {
+            request.setAction(TC.rest.RestActionType.SEND); // FIXME: make a copy of request?
+            return this._send(request);
         }
 
-        _send(args) {
-            var route: string = args.route;
-            var data: any = args.data;
-            var sid: string = args.sid;
-            var action: string;
-            if (args.action !== undefined) {
-                action = args.action;
-            } else {
-                action = 'send';
-            }
-            var id: string = Math.random().toString();
+        public get(request: TC.rest.RestRequest): ng.IPromise<TC.rest.RestResponse> {
+            request.setAction(TC.rest.RestActionType.GET); // FIXME: make a copy of request?
+            return this._send(request);
+        }
 
-            var deferred = this.$q.defer();
+        private _send(request: TC.rest.RestRequest): ng.IPromise<TC.rest.RestResponse>  {
+            var deferred: ng.IDeferred<TC.rest.RestResponse> = this.$q.defer();
 
-            var inner_callback = (parsed_data) => {
+            var inner_callback: ResponseHandler = (parsed_data: TC.rest.RestResponse) => {
                 this.$rootScope.$apply(function(){
                     deferred.resolve(parsed_data);
                 });
-                deferred.resolve(parsed_data);
-                if (args.callback) {
-                    args.callback(parsed_data);
+                if (request.callback) {
+                    request.callback(parsed_data);
                 }
             };
 
-            console.log("new message handler", id, args.callback);
-            this.message_callbacks[id] = inner_callback;
+            this.message_callbacks[request.getId()] = inner_callback;
 
-            var message = new RawMessage(
-                id, route, data, sid, action
-            );
-
-            this._queue.push(message);
+            this._queue.push(request);
             this._process_queue();
 
             return deferred.promise;

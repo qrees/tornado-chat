@@ -1,4 +1,8 @@
 import logging
+import re
+import jinja2
+import jinja2.ext
+import jinja2.nodes
 import os
 import importlib
 
@@ -98,6 +102,57 @@ class Context(object):
         return self._app
 
 
+REFERENCE = r'^///\s*<reference\s*path="(.*)"/>\s*$'
+REFERENCE_COMP = re.compile(REFERENCE)
+
+
+def parse(path):
+    with open(path, 'r') as plik:
+        for line in plik:
+            matched = REFERENCE_COMP.match(line)
+            if matched:
+                print matched.groups()
+            else:
+                print line
+
+
+def TypeScriptExtensionFactory(app):
+
+    class TypeScriptExtension(jinja2.ext.Extension):
+        tags = {'asset'}
+
+        def __init__(self, environment):
+            super(TypeScriptExtension, self).__init__(environment)
+            self._app = app
+
+        def parse_attrs(self, parser, add_id=True, with_context=False):
+            attrs = {}
+            while parser.stream.current.type != 'block_end':
+                node = parser.parse_assign_target(with_tuple=False)
+
+                if parser.stream.skip_if('assign'):
+                    attrs[node.name] = parser.parse_expression()
+                else:
+                    attrs[node.name] = jinja2.nodes.Const(node.name)
+            if with_context:
+                attrs['ctx'] = jinja2.nodes.ContextReference()
+            return jinja2.nodes.Dict([jinja2.nodes.Pair(jinja2.nodes.Const(k), v) for k,v in attrs.items()])
+
+        def parse(self, parser):
+            tag = parser.stream.next()
+
+            attrs = self.parse_attrs(parser)
+            return jinja2.nodes.Output([self.call_method('_assets', args=[attrs])]).set_lineno(10)
+
+        def _assets(self, args):
+            assert 'path' in args
+            path = args['path']
+            path = os.path.join(self._app.config['STATICS_PATH'], path)
+            parse(path)
+            return str(args)
+    return TypeScriptExtension
+
+
 class Application(object):
 
     def __init__(self, config):
@@ -106,6 +161,10 @@ class Application(object):
         self.config = config
         self.msg_handler_registry = MsgHandlerRegistry(self)
         self.db = Database(self)
+        self.loader = jinja2.FileSystemLoader(config['TEMPLATES_DIRECTORY'])
+        self.template_environment = jinja2.Environment(
+            loader=self.loader,
+            extensions=[TypeScriptExtensionFactory(self)])
 
     def _load_settings(self):
         pass

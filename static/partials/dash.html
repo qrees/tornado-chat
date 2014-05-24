@@ -1,15 +1,19 @@
-
 <div>
-    Talk with: <input ng-model="name" type="text"/>
-    <button ng-click="talk()">Talk</button>
-    <p>{{ error }}</p>
-</div>
+    <div>
+        Talk with: <input ng-model="name" type="text"/>
+        <button ng-click="talk()">Talk</button>
+        <p>{{ error }}</p>
+    </div>
+    Test
+    <form core-add-form ref="stream">
+        Add contact: <input ng-model="item.username" type="text"/>
+        <core-form-error field="username"></core-form-error>
+        <core-add-button></core-add-button>
+    </form>
 
-<form core-add-form ref="stream">
-    Add contact: <input ng-model="name" type="text"/>
-    <input type="submit"/>
-</form>
-
-<div core-stream ref="stream">
-    {{ stream.objects }}
+    Stream:
+    <div core-stream ref="stream">
+        {{ stream.objects }}
+    </div>
+    End of stream
 </div>

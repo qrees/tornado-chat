@@ -11,8 +11,8 @@
             'restrict': 'EA',
             'replace': false,
             'transclude': false,
-            link: function(scope, iElement, iAttrs, controller){
-                var var_ = iAttrs['var'] || 'stream';
+            link: function(scope, iElement, iAttrs){
+//                var var_ = iAttrs['var'] || 'stream';
 
                 var ref = function() {
                     return scope.$eval(iAttrs.ref);
@@ -21,7 +21,7 @@
                 var collect = function() {
                     var stream = ref();
 
-                    scope.$parent[var_] = stream;
+//                    scope.$parent[var_] = stream;
                     if (stream) {
                         stream.load();
                     } else {
@@ -32,7 +32,6 @@
                 var destroy = function() {
                     scope.DB.onChangedEvent.unregister(collect);
                 };
-                console.log(scope.DB);
                 scope.DB.onChangedEvent.register(collect);
                 scope.$watch(ref, collect);
                 scope.$on('$destroy', destroy);
@@ -40,6 +39,62 @@
         }
     };
 
-    module.directive('coreStream', coreStream);
+    var coreAddForm = function coreAddForm(){
+        return {
+            'templateUrl': null,
+            'scope': true,
+            'restrict': 'EA',
+            'replace': false,
+            'transclude': false,
+            controller: function($scope, $element, $attrs){
+                var iAttrs = $attrs;
+                var scope = $scope;
+                var coreAddForm = {};
+                $scope.coreAddForm = coreAddForm;
+                var var_ = iAttrs['var'] || 'item';
 
+                var ref = function() {
+                    return scope.$eval(iAttrs.ref);
+                };
+
+                var item = function() {
+                    return scope.$eval(var_);
+                };
+
+                var addItem = function() {
+                    var stream = ref();
+                    var response = stream.addItem(item());
+                    response.then(function(){
+                        console.log("addItem response", arguments);
+                    })
+                };
+
+                var destroy = function(){
+                    // TODO
+                };
+
+                scope.$on('$destroy', destroy);
+                coreAddForm.submit = addItem;
+            },
+            link: function(scope, iElement, iAttrs, controller){
+                console.log("coreAddForm link", controller);
+            }
+        }
+    };
+    module.directive('coreAddForm', coreAddForm);
+
+    var coreAddButton = function coreAddButton(){
+        return {
+            'restrict': 'E',
+            'template': '<button type="submit">Add</button>',
+            'require': '^coreAddForm',
+            link: function(scope, iElement, iAttrs, controller){
+                var element = angular.element(iElement);
+                element.bind('click', scope.coreAddForm.submit);
+            }
+        }
+    }
+
+    module.directive('coreStream', coreStream);
+    module.directive('coreAddButton', coreAddButton);
 })();

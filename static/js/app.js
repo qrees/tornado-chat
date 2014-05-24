@@ -20,9 +20,11 @@
                 connectorRegistry,
                 webSocket);
         }).
-        factory('$sid', TC.SessionStorage.create).
+        factory('$sid', function(){
+            return new TC.session.SessionStorage();
+        }).
         factory("$ds", function($ws, $sid){
-            return TC.SidDataSource.create($ws, $sid);
+            return new TC.data_source.Sid($ws, $sid);
         }).
         factory('$connection', TC.Connection.create).
         factory('connectorRegistry', function(){

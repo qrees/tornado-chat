@@ -1,21 +1,12 @@
-/// <reference path="../references.ts"/>
+///<reference path="../references.ts"/>
 
 module TC.data_source {
-    export declare class Observable {
 
-    }
+    export interface DataSource {
+        open(): void
 
-    export class DataSource extends Observable {
-        open(uri: string){
+        get(request: TC.rest.RestRequest): ng.IPromise<TC.rest.RestResponse>
 
-        }
-
-        get(payload){
-
-        }
-
-        send(payload){
-
-        }
+        send(request: TC.rest.RestRequest): ng.IPromise<TC.rest.RestResponse>
     }
 }
