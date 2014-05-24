@@ -3,6 +3,7 @@
 "use strict";
 
     var module = angular.module('chat', [
+        'ngRoute',
         'chat.login',
         'chat.dash',
         'chat.directives']);
