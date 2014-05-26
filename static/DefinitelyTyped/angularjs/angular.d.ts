@@ -11,6 +11,7 @@ declare var angular: ng.IAngularStatic;
 // Support for painless dependency injection
 interface Function {
     $inject?: string[];
+    (...args: any[]):any;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
