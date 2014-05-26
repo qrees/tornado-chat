@@ -1,3 +1,4 @@
+/// <reference path="core/response_status.ts"/>
 /// <reference path="utils/assert.ts"/>
 /// <reference path="utils/websocket.ts"/>
 /// <reference path="utils/registry.ts"/>

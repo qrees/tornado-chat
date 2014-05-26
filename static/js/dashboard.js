@@ -20,6 +20,11 @@
         };
 
         $scope.stream = $scope.DB.stream('contact');
+        var unauthorizedListener = function unauthorizedListener(){
+            console.log("User not logged in, redirecting to /login");
+            $location.path('/login');
+        }
+        $scope.DB.events['unauthorized'].register(unauthorizedListener);
     };
 
     module.

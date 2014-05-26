@@ -10,19 +10,122 @@ module TC {
     }
 
     export class DB {
-        public dataSource: TC.data_source.DataSource;
+        private dataSource: TC.data_source.DataSource;
+        public events: {[key: string]: TC.utils.EventDispatcher} = {};
+        private _objCache: {
+            [resource: string]: {
+                [id: string]: Model
+            }
+        }
         private modelRegistry: TC.ModelRegistry;
         public onChangedEvent: TC.utils.EventDispatcher = new TC.utils.EventDispatcher();
 
         constructor(dataSource: TC.data_source.DataSource, modelRegistry: TC.ModelRegistry){
             this.dataSource = dataSource;
             this.modelRegistry = modelRegistry;
+            this.events['unauthorized'] = new TC.utils.EventDispatcher();
         }
 
-        stream(model_name: string): TC.Stream{
-            var model_factory: TC.ModelFactory = this.modelRegistry.getModel(model_name);
+        stream(resource: string): TC.Stream{
+            var model_factory: TC.ModelFactory = this.modelRegistry.getModel(resource);
             return new TC.Stream(this, model_factory);
         }
+
+        addItem(resource: string, data: Mapping): ng.IPromise<TC.rest.RestResponse> {
+            TC.utils.assert(data !== undefined, "'data' cannot be undefined");
+            var request: TC.rest.RestRequest = new TC.rest.RestRequest(
+                resource, data, TC.rest.RestActionType.SEND
+            );
+            var ws_deferred: ng.IPromise<TC.rest.RestResponse> = this.dataSource.send(request);
+
+            ws_deferred.then(this._handleAddResult.bind(this));
+            return ws_deferred;
+        }
+
+        private _handleAddResult(response: TC.rest.RestResponse) {
+            // TODO
+            throw new Error("Not yet implemented");
+        }
+
+        runQuery(resource: string, filters: Filters): ng.IPromise<TC.rest.RestResponse>  {
+            var request: TC.rest.RestRequest = new TC.rest.RestRequest(
+                resource,
+                filters.asDict(),
+                TC.rest.RestActionType.GET
+            );
+            var ws_deferred: ng.IPromise<TC.rest.RestResponse> = this.dataSource.get(request);
+            console.log("runQuery", ws_deferred);
+            ws_deferred.then(this._handleQueryResult.bind(this));
+            return ws_deferred;
+        }
+
+        public getModel(resource: string, id: string): Model {
+            var resources: { [id: string]: Model };
+            var model: Model;
+            if (!(resource in this._objCache)) {
+                throw new Error("Missing resource: " + resource);
+            } else {
+                resources = this._objCache[resource];
+            }
+
+            if (!(id in resources)) {
+                throw new Error("Missing model in resource: " + resource + " " + id);
+            } else {
+                model = resources[id];
+            }
+            return model;
+        }
+
+        public getOrCreateModel(resource: string, id: string, value: Mapping): Model {
+            var resources: { [id: string]: Model };
+            var model: Model;
+            if (!(resource in this._objCache)) {
+                resources = {};
+                this._objCache[resource] = resources;
+            } else {
+                resources = this._objCache[resource];
+            }
+
+            if (!(id in resources)) {
+                var model_factory: TC.ModelFactory = this.modelRegistry.getModel(resource);
+                model = model_factory.create(value);
+            } else {
+                model = resources[id];
+                model.update(value);
+            }
+            return model;
+        }
+
+        private _handleQueryResult(value: TC.rest.RestResponse){
+
+            if (value.getStatus() === TC.rest.ResponseStatus.STATUS_UNAUTHORIZED){
+                console.warn("Received response with not ok status", value);
+                this.events['unauthorized'].trigger(new TC.utils.Event());
+                return;
+            }
+
+            if (value.getStatus() === TC.rest.ResponseStatus.STATUS_OK){
+                var data: any[] = value.getBody(); // FIXME : 'any' type
+
+                if (!angular.isArray(data)) {
+                    throw new Error("Expected array in response");
+                }
+
+                angular.forEach(data, (value: any) => { // FIXME : 'any' type
+                    var id = value.$id;
+                    var resource = value.$resource;
+                    if (id === undefined || resource === undefined){
+                        console.error("missing $id or $resource from data", value);
+                        throw new Error("missing $id or $resource from data");
+                    }
+                    var model: TC.Model = this.getOrCreateModel(resource, id, value);
+                });
+                return;
+            }
+
+            throw new Error("Unsupported status: " + value.getStatus());
+        }
+
     }
 
     export class ModelRegistry {
@@ -66,6 +169,10 @@ module TC {
 
     export class Model {
         constructor(value: Mapping){ // FIXME : Mapping type is almost the as 'any'
+            this.update(value);
+        }
+
+        public update(value: Mapping) {
             // TODO: copy values
         }
     }
@@ -74,12 +181,16 @@ module TC {
         private _db: TC.DB;
         private _factory: TC.ModelFactory;
         private _filters: Filters;
+        public events: {
+            [key: string]: TC.utils.EventDispatcher
+        } = {};
         objects: TC.Model[];
 
         constructor(db: TC.DB, factory: TC.ModelFactory){
             this._db = db;
             this._factory = factory;
             this._filters = new Filters();
+            this.events['unauthorized'] = new TC.utils.EventDispatcher();
         }
 
         load():void{
@@ -88,26 +199,14 @@ module TC {
 
         addItem(data: Mapping): ng.IPromise<TC.rest.RestResponse> {
             TC.utils.assert(data !== undefined, "'data' cannot be undefined");
-            var request: TC.rest.RestRequest = new TC.rest.RestRequest(
-                'resource.' + this._factory.name,
-                data,
-                TC.rest.RestActionType.SEND
-            );
-            var ws_deferred: ng.IPromise<TC.rest.RestResponse> = this._db.dataSource.send(request);
-
-            ws_deferred.then(this._handleAddResult);
+            var ws_deferred: ng.IPromise<TC.rest.RestResponse> = this._db.addItem('resource.' + this._factory.name, data);
+            ws_deferred.then(this._handleAddResult.bind(this));
             return ws_deferred;
         }
 
         runQuery(): ng.IPromise<TC.rest.RestResponse> {
-            var request: TC.rest.RestRequest = new TC.rest.RestRequest(
-                'resource.' + this._factory.name,
-                this.getFilters().asDict(),
-                TC.rest.RestActionType.GET
-            );
-            var ws_deferred: ng.IPromise<TC.rest.RestResponse> = this._db.dataSource.get(request);
-            console.log("runQuery", ws_deferred);
-            ws_deferred.then(this._handleQueryResult);
+            var ws_deferred: ng.IPromise<TC.rest.RestResponse> = this._db.runQuery('resource.' + this._factory.name, this.getFilters());
+            ws_deferred.then(this._handleQueryResult.bind(this));
             return ws_deferred;
         }
 
@@ -120,22 +219,38 @@ module TC {
         }
 
         private _handleAddResult(value: TC.rest.RestResponse){
-
+            // TODO
         }
 
         private _handleQueryResult(value: TC.rest.RestResponse){
-            var data: any[] = value.getBody(); // FIXME : 'any' type
-            console.log(value);
-            // TODO : handle invalid reposnse
 
-            if (!angular.isArray(data)) {
-                throw new Error("Expected array in response");
+            if (value.getStatus() === TC.rest.ResponseStatus.STATUS_UNAUTHORIZED){
+                console.warn("Received response with not ok status", value);
+                this.events['unauthorized'].trigger(new TC.utils.Event());
+                return;
             }
 
-            angular.forEach(data, (value: any) => { // FIXME : 'any' type
-                var entity: TC.Model = this._factory.create(value);
-                this.pushObject(entity);
-            });
+            if (value.getStatus() === TC.rest.ResponseStatus.STATUS_OK){
+                var data: any[] = value.getBody(); // FIXME : 'any' type
+
+                if (!angular.isArray(data)) {
+                    throw new Error("Expected array in response");
+                }
+
+                angular.forEach(data, (value: any) => { // FIXME : 'any' type
+                    var id = value.$id;
+                    var resource = value.$resource;
+                    if (id === undefined || resource === undefined){
+                        console.error("missing $id or $resource from data", value);
+                        throw new Error("missing $id or $resource from data");
+                    }
+                    var model: TC.Model = this._db.getModel(resource, id);
+                    this.pushObject(model);
+                });
+                return;
+            }
+
+            throw new Error("Unsupported status: " + value.getStatus());
         }
     }
 }
