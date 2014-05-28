@@ -22,8 +22,6 @@
             }
         });
 
-        console.log('test');
-
         $scope.$on('$routeChangeStart', function() {
             $connection.off(status_event_id)
         });

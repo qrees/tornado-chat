@@ -105,7 +105,6 @@ module TC.data_source {
             console.debug("IN", response);
             var message_id: string = response.getId();
             var message_route: string = response.getRoute();
-            console.log("_onmessage");
             if (message_id in this.message_callbacks) {
                 this.message_callbacks[message_id](response);
                 delete this.message_callbacks[message_id];

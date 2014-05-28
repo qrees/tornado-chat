@@ -77,7 +77,7 @@
                 coreAddForm.submit = addItem;
             },
             link: function(scope, iElement, iAttrs, controller){
-                console.log("coreAddForm link", controller);
+
             }
         }
     };
