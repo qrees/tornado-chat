@@ -70,6 +70,7 @@ class BusinessMethod(object):
 
     def get_user(self):
         account = self._app.component_registry['account']
+        assert self._sid is not None
         return account.user_from_sid(self._sid)
 
     def __init__(self, app, message):

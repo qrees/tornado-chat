@@ -66,11 +66,9 @@
         },
 
         send: function(route, data, callback) {
-            return this.$ds.send({
-                route:route,
-                data: data,
-                callback: callback
-            });
+            var response = this.$ds.send(new TC.rest.RestRequest(route, data));
+            response.then(callback);
+            return response;
         },
 
         setStatus: function(status){
@@ -79,32 +77,27 @@
         },
 
         login: function (username, password) {
-            var that = this;
-            this.send('login', {
+            var response = this.send('login', {
                 "username": username,
                 "password": password
-            }, function(){
-                var args = arguments;
-                that.$rootScope.$apply(function(){
-                    that._onLogin.apply(that, args);
-                });
-            });
+            }, this._onLogin.bind(this));
             this.setStatus(TC.CONNECTION_STATUS.AUTHENTICATING);
+            return response;
         },
         register: function(username, password) {
-            this.send('register', {
+            return this.send('register', {
                 'username': username,
                 'password': password
             })
         },
         _onLogin: function(data) {
-            if (data.body.sid) {
-                this.$sid.setSid(data.body.sid);
+            var body = data.getBody();
+            if (body.sid) {
+                this.$sid.setSid(body.sid);
                 this.setStatus(TC.CONNECTION_STATUS.AUTHENTICATED);
             }else{
                 this.setStatus(TC.CONNECTION_STATUS.OFFLINE);
             }
-            console.log("Login response", data);
         }
     });
 
