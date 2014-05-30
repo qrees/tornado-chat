@@ -32,12 +32,15 @@ module TC.utils {
         }
 
         unregister(listener: Listener): void {
+            // TODO : does not work
             for (var i: number = 0; i < this._listeners.length; i++) {
                 if (this._listeners[i] === listener) {
                     this._listeners.splice(i, 1);
-                    break;
+                    return;
                 }
             }
+            console.error("Cannot unregister ", listener);
+            throw new Error("Cannot unregister " + listener + " because it's not registered");
         }
 
         trigger(event: Event): void {
