@@ -51,8 +51,10 @@ module TC.rest {
         private _meta: {[key: string]: string} = {};
         private _callback: Function;
 
-        constructor(route: string, data: any, action: RestActionType){
+        constructor(route: string, data: any, action?: RestActionType){
             TC.utils.assert(data !== undefined);
+            if (action === undefined)
+                action = RestActionType.GET;
             this._action = action;
             this._data = data;
             this._route = route;

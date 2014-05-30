@@ -12,3 +12,4 @@
 /// <reference path="core/rest.ts"/>
 /// <reference path="core/session.ts"/>
 /// <reference path="profiles/models.ts"/>
+/// <reference path="login/login.ts"/>

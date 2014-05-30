@@ -27,7 +27,9 @@
         factory("$ds", function($ws, $sid){
             return new TC.data_source.Sid($ws, $sid);
         }).
-        factory('$connection', TC.Connection.create).
+        factory('$connection', function($ds, $sid, $rootScope){
+            return new TC.login.Connection($ds, $sid, $rootScope);
+        }).
         factory('connectorRegistry', function(){
             return new TC.data_source.ConnectorRegistry();
         }).

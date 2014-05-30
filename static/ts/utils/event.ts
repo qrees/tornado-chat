@@ -7,7 +7,9 @@ module TC.utils {
     }
 
     export class Event {
+        constructor(){
 
+        }
     }
 
     export class EventDispatcher {
