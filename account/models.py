@@ -4,14 +4,15 @@ import logging
 
 from sqlalchemy import Column, String, ForeignKey, Text, DateTime
 from sqlalchemy.orm import relationship
-from common.db import ModelBase
+from common.db import ModelBase, primaryKey, foreignKey
 
 logger = logging.getLogger(__name__)
 
 
 class User(ModelBase):
     __tablename__ = 'user'
-    id = Column(String(256), primary_key=True)
+    id = primaryKey()
+    username = Column(String(256), unique=True)
     password = Column(String(255))
 
     def set_password(self, password):
@@ -29,8 +30,9 @@ class User(ModelBase):
 
 class Session(ModelBase):
     __tablename__ = "session"
-    id = Column(String(40),  primary_key=True)
-    user_id = Column(String(255), ForeignKey('user.id'), nullable=False)
+    id = primaryKey()
+    user_id = foreignKey('user.id', nullable=False)
+    sid = Column(String(40), unique=True)
     user = relationship("User", backref="sessions")
     data = Column(Text(), nullable=False)
     expire = Column(DateTime())

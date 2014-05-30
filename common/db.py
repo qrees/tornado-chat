@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, Column, Integer, ForeignKey
 from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
@@ -29,6 +29,14 @@ class Database(object):
         base.metadata.create_all(self.engine)
 
 Base = declarative_base()
+
+
+def primaryKey():
+    return Column(Integer,  primary_key=True)
+
+
+def foreignKey(rel, **kwargs):
+    return Column(Integer, ForeignKey(rel), **kwargs)
 
 
 class ModelBase(Base):

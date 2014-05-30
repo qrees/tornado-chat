@@ -20,8 +20,11 @@ class AccountComponent(object):
 
     def user_from_sid(self, sid):
         session = self._app.db.session()
-        user = session.query(Session).filter_by(id=sid).first()
-        return user
+        session = session.query(Session).filter_by(sid=sid).first()
+        return None if session is None else session.user
+
+    def user_from_name(self, name):
+        raise NotImplemented("")
 
     def create(self):
         self._as_component()

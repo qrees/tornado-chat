@@ -11,10 +11,10 @@ class LoginMethod(BusinessMethod):
 
     def _perform(self, username, password):
         session = self._app.db.session()
-        user = session.query(User).filter_by(id=username).first()
+        user = session.query(User).filter_by(username=username).first()
         if user is not None and user.check_password(password):
             _id = uuid4().get_hex()
-            user_session = Session(id=_id, user=user, data="{}", expire=None)
+            user_session = Session(sid=_id, user=user, data="{}", expire=None)
             session.add(user_session)
             return BusinessResponse.response_ok({'sid': _id})
         else:
@@ -26,9 +26,9 @@ class RegisterMethod(BusinessMethod):
 
     def _perform(self, username, password):
         session = self._app.db.session()
-        user = session.query(User).filter_by(id=username).first()
+        user = session.query(User).filter_by(username=username).first()
         if user is None:
-            new_user = User(id=username)
+            new_user = User(username=username)
             new_user.set_password(password)
             session.add(new_user)
             return BusinessResponse.response_ok({})
