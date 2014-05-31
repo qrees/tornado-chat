@@ -24,7 +24,12 @@
             console.log("User not logged in, redirecting to /login");
             $location.path('/login');
         }
-        $scope.DB.events['unauthorized'].register(unauthorizedListener);
+
+        var unauthorized_event_id = $scope.DB.events['unauthorized'].register(unauthorizedListener);
+
+        $scope.$on('$destroy', function() {
+            $scope.DB.events['unauthorized'].unregister(unauthorized_event_id)
+        });
     };
 
     module.

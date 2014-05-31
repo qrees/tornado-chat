@@ -13,39 +13,33 @@ module TC.utils {
     }
 
     export class EventDispatcher {
-        private _listeners: Listener[] = [];
+        private _listeners: {[key: string]: Listener} = {};
+        private _listener_id: number = 0;
 
-        isRegistered(listener: Listener): boolean{
-            for (var i: number = 0; i < this._listeners.length; i++) {
-                if (this._listeners[i] === listener) {
-                    return true;
-                }
-            }
-            return false;
+        isRegistered(identifier: string): boolean{
+            return identifier in this._listeners;
         }
 
-        register(listener: Listener): void {
-            if (this.isRegistered(listener))
-                return;
-
-            this._listeners.push(listener);
+        register(listener: Listener): string {
+            var identifier: string = this._listener_id.toString(10);
+            this._listeners[identifier] = listener;
+            this._listener_id++;
+            return identifier;
         }
 
-        unregister(listener: Listener): void {
-            // TODO : does not work
-            for (var i: number = 0; i < this._listeners.length; i++) {
-                if (this._listeners[i] === listener) {
-                    this._listeners.splice(i, 1);
-                    return;
-                }
+        unregister(identifier: string): void {
+            if(!(this.isRegistered(identifier))){
+                console.error("Cannot unregister ", identifier);
+                throw new Error("Cannot unregister " + identifier + " because it's not registered");
             }
-            console.error("Cannot unregister ", listener);
-            throw new Error("Cannot unregister " + listener + " because it's not registered");
+            delete this._listeners[identifier];
         }
 
         trigger(event: Event): void {
-            for(var i: number = 0; i < this._listeners.length; i++){
-                this._listeners[i](event);
+            var key: string;
+            for(key in this._listeners){
+                if(this._listeners.hasOwnProperty(key))
+                    this._listeners[key](event);
             }
         }
     }

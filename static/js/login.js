@@ -24,8 +24,8 @@
 
         var status_event_id = $connection.event_status.register(statusListener);
 
-        $scope.$on('$routeChangeStart', function() {
-            $connection.event_status.unregister(statusListener)
+        $scope.$on('$destroy', function() {
+            $connection.event_status.unregister(status_event_id)
         });
     };
 

@@ -29,10 +29,11 @@
                     }
                 };
 
+                var on_changed_event_id;
                 var destroy = function() {
-                    scope.DB.onChangedEvent.unregister(collect);
+                    scope.DB.onChangedEvent.unregister(on_changed_event_id);
                 };
-                scope.DB.onChangedEvent.register(collect);
+                on_changed_event_id = scope.DB.onChangedEvent.register(collect);
                 scope.$watch(ref, collect);
                 scope.$on('$destroy', destroy);
             }
