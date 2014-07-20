@@ -28,9 +28,10 @@ module TC.data_source {
             var copied: TC.rest.RestRequest = angular.copy(request);
             var sid = this._sid.getSid();
             if(sid === undefined || sid === null){
-                throw new Error("sid is not set");
+                console.warn("sid is not set");
+            } else {
+                copied.setMeta('sid', sid);
             }
-            copied.setMeta('sid', sid);
             copied.setAction(TC.rest.RestActionType.SEND);
             console.debug("call get on ", this._ws, "with", copied);
             return this._ws.send(copied);

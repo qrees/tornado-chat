@@ -2,15 +2,17 @@ import hashlib
 import uuid
 import logging
 
-from sqlalchemy import Column, String, ForeignKey, Text, DateTime
+from sqlalchemy import Column, String, Text, DateTime
 from sqlalchemy.orm import relationship
 from common.db import ModelBase, primaryKey, foreignKey
+from common.simplifier import SimpleObject
 
 logger = logging.getLogger(__name__)
 
 
-class User(ModelBase):
+class User(ModelBase, SimpleObject):
     __tablename__ = 'user'
+    MODEL_NAME = 'user'
     id = primaryKey()
     username = Column(String(256), unique=True)
     password = Column(String(255))
@@ -26,6 +28,13 @@ class User(ModelBase):
         hashed_password = hashlib.sha512(password + salt).hexdigest()
         logger.info("Comparing %s with %s" % (hash, hashed_password))
         return hash == hashed_password
+
+    def as_simple_object(self):
+        return {
+            '$model': self.MODEL_NAME,
+            'id': self.id,
+            'username': self.username.encode('utf-8')
+        }
 
 
 class Session(ModelBase):

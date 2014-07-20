@@ -1,3 +1,4 @@
+from copy import deepcopy
 import logging
 import re
 import jinja2
@@ -19,6 +20,7 @@ logger = logging.getLogger(__name__)
 def load_components(components, context_maker):
     factories = []
     for path in components:
+        logger.info("Loading component %s" % (path,))
         try:
             module, class_ = path.rsplit('.', 1)
         except ValueError:
@@ -41,8 +43,11 @@ static_path = os.path.join(base, 'static')
 
 class Config(object):
 
-    def __init__(self):
-        self._config = {}
+    def __init__(self, default=None):
+        if default is None:
+            self._config = {}
+        else:
+            self._config = deepcopy(default)
 
     def load(self):
         settings = importlib.import_module('settings')
@@ -53,6 +58,9 @@ class Config(object):
 
     def get(self, item, default=None):
         return self._config.get(item, default)
+
+    def set(self, item, value):
+        self._config[item] = value
 
 
 class ComponentRegistry(object):
@@ -156,6 +164,7 @@ def TypeScriptExtensionFactory(app):
 class Application(object):
 
     def __init__(self, config):
+        self._tornado = None
         self.component_registry = ComponentRegistry(self)
         self.app_handlers = AppHandlers(self)
         self.config = config

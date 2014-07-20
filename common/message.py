@@ -26,6 +26,18 @@ class Message(object):
         return self._action
 
     @staticmethod
+    def empty(handler):
+        return Message(
+            id=None,
+            request=handler.request,
+            body=None,
+            handler=handler,
+            route=None,
+            action=None,
+            meta=None
+        )
+
+    @staticmethod
     def from_json(json_message, handler):
         msg_meta = json_message['meta']
         msg_body = json_message['body']
@@ -44,10 +56,9 @@ class Message(object):
         return message
 
     def respond(self, response):
-        data = response.get_data()
         envelope = {
             'id': self._id,
-            'body': data,
+            'body': response.get_data(),
             'status': response.get_status(),
             'route': self._route,
             'action': self._action

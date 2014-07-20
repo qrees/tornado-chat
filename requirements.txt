@@ -6,4 +6,5 @@ alembic
 wtforms==1.0.4
 jinja2
 sphinx
+nose
 

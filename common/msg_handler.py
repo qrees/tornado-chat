@@ -71,7 +71,7 @@ class MsgHandler(object):
             response = yield gen.Task(tornado.stack_context.wrap(wrap),)
             logger.debug("end task")
             message.respond(response)
-        except Exception, e:
+        except Exception as e:
             logger.exception("Failure in coroutine")
 
     def result(self, future):

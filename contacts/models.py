@@ -8,3 +8,5 @@ class Contact(ModelBase):
     id = Column(Integer, Sequence('contact_id_seq'), primary_key=True)
     owner_id = Column(String(256), nullable=False)
     contact_id = Column(String(256))
+
+

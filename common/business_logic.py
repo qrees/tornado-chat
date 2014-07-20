@@ -1,5 +1,6 @@
 import logging
 from common.hacks import MultiDict
+from common.simplifier import Simplifier
 
 
 class BusinessResponse(object):
@@ -47,6 +48,24 @@ class BusinessResponse(object):
         return BusinessResponse(status=BusinessResponse.STATUS_NOT_FOUND, data=data)
 
 
+class BusinessMethodException(BaseException):
+    def __init__(self, data=None, message=None):
+        super(BusinessMethodException, self).__init__(message)
+        self._data = data
+
+    @property
+    def data(self):
+        return self._data
+
+
+class InvalidData(BusinessMethodException):
+    pass
+
+
+class Unauthorized(BusinessMethodException):
+    pass
+
+
 class ValidationError(BaseException):
 
     def __init__(self, response):
@@ -66,6 +85,7 @@ def simple_business_method_factory(method):
 
 class BusinessMethod(object):
     RESPONSE_CLASS = BusinessResponse
+    SIMPLIFIER_CLASS = Simplifier
     FORM = None
 
     def get_user(self):
@@ -77,6 +97,32 @@ class BusinessMethod(object):
         self._app = app
         self._message = message
         self._sid = self._message.get_sid()
+
+    def _simplify(self, data):
+        serializer = self.SIMPLIFIER_CLASS(self)
+        return serializer.simplify(data)
+
+    def _response_ok(self, serialized):
+        return self.RESPONSE_CLASS.response_ok(serialized)
+
+    def _response_invalid_data(self, serialized):
+        return self.RESPONSE_CLASS.response_invalid_data(serialized)
+
+    def _response_unauthorized(self, serialized):
+        return self.RESPONSE_CLASS.response_unauthorized(serialized)
+
+    def _perform_internal(self, **kwargs):
+        try:
+            data = self._perform(**kwargs)
+        except InvalidData as e:
+            serialized = self._simplify(e)
+            return self._response_invalid_data(serialized)
+        except Unauthorized as e:
+            serialized = self._simplify(e)
+            return self._response_unauthorized(serialized)
+        else:
+            serialized = self._simplify(data)
+            return self._response_ok(serialized)
 
     def _perform(self, **kwargs):
         raise NotImplemented("_perform of %r has to be implemented" % (self,))
@@ -99,7 +145,7 @@ class BusinessMethod(object):
             return e.response
 
         try:
-            response = self._perform(**data)
+            response = self._perform_internal(**data)
             db.commit_session()
         except Exception, e:
             logging.exception("Exception when calling business method")

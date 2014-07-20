@@ -1,9 +1,10 @@
 import json
-import sys
 from tornado.ioloop import IOLoop
 import tornado.websocket
 from common.message import Message
-# from common.router import route_to_handler
+
+import logging
+logger = logging.getLogger(__name__)
 
 
 class WebSocketRouterFactory(object):
@@ -23,7 +24,7 @@ class WebSocketRouter(tornado.websocket.WebSocketHandler):
         super(WebSocketRouter, self).__init__(*args, **kwargs)
 
     def open(self):
-        print "WebSocket opened"
+        logger.info("Websocket opened")
 
     def on_message(self, message):
         """
@@ -36,8 +37,18 @@ class WebSocketRouter(tornado.websocket.WebSocketHandler):
 
         :param : raw message in json format
         """
-        json_message = json.loads(message)
-        message = Message.from_json(json_message=json_message, handler=self)
+        try:
+            json_message = json.loads(message)
+        except ValueError:
+            self.write_message({"status": "invalid", "error": "Cannot deserialize request"})
+            return
+
+        try:
+            message = Message.from_json(json_message=json_message, handler=self)
+        except KeyError as e:
+            self.write_message({"status": "invalid", "error": "Missing key in message: " + e.message})
+            return
+
         msg_handlers = self._app.msg_handler_registry.match(message.get_route())
         ioloop = IOLoop.current()
 
@@ -54,4 +65,4 @@ class WebSocketRouter(tornado.websocket.WebSocketHandler):
                 ioloop.add_future(future, callback)
 
     def on_close(self):
-        print "WebSocket closed"
+        logger.info("Websocket closed")
