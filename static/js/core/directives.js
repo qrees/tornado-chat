@@ -21,7 +21,6 @@
                 var collect = function() {
                     var stream = ref();
 
-//                    scope.$parent[var_] = stream;
                     if (stream) {
                         stream.load();
                     } else {
@@ -82,7 +81,6 @@
             }
         }
     };
-    module.directive('coreAddForm', coreAddForm);
 
     var coreAddButton = function coreAddButton(){
         return {
@@ -94,8 +92,9 @@
                 element.bind('click', scope.coreAddForm.submit);
             }
         }
-    }
+    };
 
+    module.directive('coreAddForm', coreAddForm);
     module.directive('coreStream', coreStream);
     module.directive('coreAddButton', coreAddButton);
 })();

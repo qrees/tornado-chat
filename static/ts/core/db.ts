@@ -24,6 +24,7 @@ module TC {
             this.dataSource = dataSource;
             this.modelRegistry = modelRegistry;
             this.events['unauthorized'] = new TC.utils.EventDispatcher();
+            this._objCache = {};
         }
 
         stream(resource: string): TC.Stream{
@@ -89,6 +90,7 @@ module TC {
             if (!(id in resources)) {
                 var model_factory: TC.ModelFactory = this.modelRegistry.getModel(resource);
                 model = model_factory.create(value);
+                resources[model.getId()] = model;
             } else {
                 model = resources[id];
                 model.update(value);
@@ -151,7 +153,7 @@ module TC {
 
     export class ModelFactory {
         public name: string;
-        private type: new(value: Mapping) => TC.Model;
+        private type: new(value: Mapping, factory: ModelFactory) => TC.Model;
 
         constructor(name: string, type: new() => TC.Model){
             if (type === null || type === undefined){
@@ -163,18 +165,32 @@ module TC {
         }
 
         create(value: Mapping): TC.Model {
-            return new this.type(value);
+            return new this.type(value, this);
         }
     }
 
     export class Model {
-        constructor(value: Mapping){ // FIXME : Mapping type is almost the as 'any'
+        private resource: string;
+        private id: string;
+        private $factory: ModelFactory;
+
+        constructor(value: Mapping, factory: ModelFactory){ // FIXME : Mapping type is almost the as 'any'
+            this.$factory = factory;
             this.update(value);
         }
 
-        public update(value: Mapping) {
-            // TODO: copy values
+        public update(value: Mapping): void {
+            if(value['$resource'] != this.$factory.name) {
+                throw new Error("Invalid resource for factory: " + value['$resource'] + " expected: " + this.$factory.name);
+            }
+            this.id = value['$id'];
+            this.resource = value['$resource'];
         }
+
+        public getId(): string {
+            return this.id;
+        }
+
     }
 
     export class Stream {
@@ -191,10 +207,14 @@ module TC {
             this._factory = factory;
             this._filters = new Filters();
             this.events['unauthorized'] = new TC.utils.EventDispatcher();
+            this.objects = [];
         }
 
         load():void{
-            this.runQuery();
+            this._db.runQuery(
+                this.resourceName(),
+                this.getFilters()
+            ).then(this._handleQueryResult.bind(this));
         }
 
         addItem(data: Mapping): ng.IPromise<TC.rest.RestResponse> {
@@ -204,17 +224,15 @@ module TC {
             return ws_deferred;
         }
 
-        runQuery(): ng.IPromise<TC.rest.RestResponse> {
-            var ws_deferred: ng.IPromise<TC.rest.RestResponse> = this._db.runQuery('resource.' + this._factory.name, this.getFilters());
-            ws_deferred.then(this._handleQueryResult.bind(this));
-            return ws_deferred;
+        resourceName(): string {
+            return 'resource.' + this._factory.name;
         }
 
-        pushObject(object: TC.Model){
+        pushObject(object: TC.Model): void {
             this.objects.push(object);
         }
 
-        getFilters(): Filters{
+        getFilters(): Filters {
             return this._filters;
         }
 
@@ -232,6 +250,7 @@ module TC {
 
             if (value.getStatus() === TC.rest.ResponseStatus.STATUS_OK){
                 var data: any[] = value.getBody(); // FIXME : 'any' type
+                console.info("Received stream", data);
 
                 if (!angular.isArray(data)) {
                     throw new Error("Expected array in response");

@@ -3,7 +3,8 @@ from account.component import UserAlreadyExists
 from account.forms import UserNameField
 from common import form
 from contacts.models import Contact
-from common.business_logic import BusinessResponse, BusinessMethod, simple_business_method_factory
+from common.business_logic import BusinessResponse, BusinessMethod, simple_business_method_factory, Unauthorized, \
+    InvalidData
 from common.msg_handler import BusinessMsgHandler
 
 
@@ -15,7 +16,7 @@ class ContactsMethod(BusinessMethod):
             return BusinessResponse.response_unauthorized({'message': 'You are not logged in'})
 
         contacts = session.query(Contact).filter_by(owner_id=user.id).all()
-        return BusinessResponse.response_ok(contacts)
+        return contacts
 
 
 class ContactAddForm(form.Form):

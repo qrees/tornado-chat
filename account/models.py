@@ -25,8 +25,8 @@ class User(ModelBase, SimpleObject):
 
     def as_simple_object(self):
         return {
-            '$model': self.MODEL_NAME,
-            'id': self.id,
+            '$resource': self.MODEL_NAME,
+            '$id': self.id,
             'username': self.username.encode('utf-8')
         }
 
@@ -43,7 +43,8 @@ class Session(ModelBase, SimpleObject):
 
     def as_simple_object(self):
         return {
-            '$model': self.MODEL_NAME,
+            '$resource': self.MODEL_NAME,
+            '$id': self.sid,
             'sid': self.sid,
             'user_id': self.user_id
         }
