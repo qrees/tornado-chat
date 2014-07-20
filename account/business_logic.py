@@ -16,7 +16,8 @@ class LoginMethod(BusinessMethod):
             _id = uuid4().get_hex()
             user_session = Session(sid=_id, user=user, data="{}", expire=None)
             session.add(user_session)
-            return {'sid': _id}
+            session.flush()
+            return [user_session]
         else:
             raise InvalidData({'message': 'invalid username or password'})
 

@@ -1,11 +1,17 @@
-from collections import deque
-import json
-import logging
+from __future__ import absolute_import
+from copy import deepcopy
+
 from tornado import testing
 from tornado.concurrent import Future
+from collections import deque
+import json
+# import logging
+
+from account.models import User
+from account.fixture import Users
+from common.fixture import DataTestCase
 from common.application import Config, Application
 from common.db import Base
-
 from common.test import websocket
 
 
@@ -46,21 +52,47 @@ class WSClient(websocket.WebSocket):
         self.process_messages()
 
 
-class AccountTest(testing.AsyncHTTPTestCase):
+class Any(object):
+
+    def __eq__(self, other):
+        return True
+
+    def __ne__(self, other):
+        return False
+
+
+class AccountTest(DataTestCase, testing.AsyncHTTPTestCase):
+    datasets = [Users]
+    env = {
+        'Users': User
+    }
 
     def setUp(self):
         super(AccountTest, self).setUp()
+
+        self.setUpFixture()
         self.client = WSClient(self.get_url('/websocket'), self.io_loop)
 
+    def tearDown(self):
+        self.app.db.drop_all(Base)
+        super(AccountTest, self).tearDown()
+
     def get_app(self):
-        logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+        if hasattr(self, 'app'):
+            raise Exception("get_app was called more than once during one test case")
+
         config = Config()
         config.load()
         config.set('DATABASE_URL', "sqlite://")
-        app = Application(config)
-        app.bootstrap()
-        app.db.syncdb(Base)
-        return app.get_listener()
+
+        self.app = Application(config)
+        self.app.bootstrap()
+        self.app.db.syncdb(Base)
+
+        self.fixture = self.app.dbfixture()
+        self.fixture.env = deepcopy(self.env)
+
+        return self.app.get_listener()
 
     def wait_for_open(self):
         future = Future()
@@ -99,5 +131,28 @@ class AccountTest(testing.AsyncHTTPTestCase):
         self.assertEquals(deserialized_response['status'], 'ok')
         self.assertDictContainsSubset({
             "username": "test", "$model": "user", "id": 1
+        }, deserialized_response['body'][0])
+        self.assertNotIn('password', deserialized_response['body'][0])
+
+    def test_login(self):
+        self.wait_for_open()
+        self.send(json.dumps({
+            'body': {
+                'username': 'bill',
+                'password': 'pass'
+            },
+            'meta': {
+                'id': '1'
+            },
+            'action': 'send',
+            'route': 'login'
+        }))
+        response = self.wait_for_message()
+        deserialized_response = json.loads(response)
+        self.assertEquals(deserialized_response['route'], 'login')
+        self.assertEquals(deserialized_response['status'], 'ok')
+        self.assertIsInstance(deserialized_response['body'][0], dict)
+        self.assertDictContainsSubset({
+            "user_id": self.data.Users.bill.id, "$model": "session", "sid": Any()
         }, deserialized_response['body'][0])
         self.assertNotIn('password', deserialized_response['body'][0])

@@ -7,17 +7,17 @@ class Simplifier(object):
         self.ctx = ctx
 
     def simplify(self, obj):
-        if isinstance(obj, collections.Iterable):
-            return map(self.simplify, obj)
-
-        if isinstance(obj, dict):
-            return dict(map(self.simplify, obj.items()))
-
         if isinstance(obj, basestring):
             return obj
 
         if isinstance(obj, (int, float, long)):
             return obj
+
+        if isinstance(obj, dict):
+            return dict(map(self.simplify, obj.items()))
+
+        if isinstance(obj, collections.Iterable):
+            return map(self.simplify, obj)
 
         if isinstance(obj, SimpleObject):
             return obj.as_simple_object()

@@ -1,5 +1,8 @@
+from __future__ import absolute_import
+
 from copy import deepcopy
 import logging
+from fixture import SQLAlchemyFixture
 import re
 import jinja2
 import jinja2.ext
@@ -201,6 +204,9 @@ class Application(object):
 
     def get_listener(self):
         return self._tornado
+
+    def dbfixture(self):
+        return SQLAlchemyFixture(engine=self.db.engine)
 
 
 def make_app():

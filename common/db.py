@@ -28,6 +28,9 @@ class Database(object):
     def syncdb(self, base):
         base.metadata.create_all(self.engine)
 
+    def drop_all(self, base):
+        base.metadata.drop_all(self.engine)
+
 Base = declarative_base()
 
 

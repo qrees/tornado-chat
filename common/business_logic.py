@@ -1,6 +1,6 @@
 import logging
 from common.hacks import MultiDict
-from common.simplifier import Simplifier
+from common.simplifier import Simplifier, SimpleObject
 
 
 class BusinessResponse(object):
@@ -58,8 +58,10 @@ class BusinessMethodException(BaseException):
         return self._data
 
 
-class InvalidData(BusinessMethodException):
-    pass
+class InvalidData(BusinessMethodException, SimpleObject):
+
+    def as_simple_object(self):
+        return self._data
 
 
 class Unauthorized(BusinessMethodException):
