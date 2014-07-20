@@ -24,7 +24,7 @@ parser_runserver.add_argument(
 parser_runserver.add_argument(
     "--host",
     type=str,
-    default='localhost',
+    default='0.0.0.0',
     help="Hostname to listen on"
 )
 parser_runserver.set_defaults(func=start_app)
