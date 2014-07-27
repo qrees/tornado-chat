@@ -29,7 +29,7 @@ class AccountTest(ApplicationTestCase):
         self.assertEquals(deserialized_response['id'], '1')
         self.assertEquals(deserialized_response['status'], 'ok')
         self.assertDictContainsSubset({
-            "username": "test", "$model": "user", "id": 1
+            "username": "test", "$resource": "user", "$id": Any()
         }, deserialized_response['body'][0])
         self.assertNotIn('password', deserialized_response['body'][0])
 
@@ -51,6 +51,6 @@ class AccountTest(ApplicationTestCase):
         self.assertEquals(deserialized_response['status'], 'ok')
         self.assertIsInstance(deserialized_response['body'][0], dict)
         self.assertDictContainsSubset({
-            "user_id": self.data.Users.bill.id, "$model": "session", "sid": Any()
+            "user_id": self.data.Users.bill.id, "$resource": "session", "sid": Any()
         }, deserialized_response['body'][0])
         self.assertNotIn('password', deserialized_response['body'][0])

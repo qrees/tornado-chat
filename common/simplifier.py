@@ -22,7 +22,7 @@ class Simplifier(object):
         if isinstance(obj, SimpleObject):
             return obj.as_simple_object()
 
-        raise TypeError("Cannot simplify %r" % (obj,))
+        raise TypeError("Cannot simplify %r, make sure that %r inherits from SimpleObject" % (obj, obj))
 
 
 class SimpleObject(object):

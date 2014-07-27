@@ -2,17 +2,69 @@
 
 module TC {
 
+    export function assert(condition: boolean, message: string): void {
+        if(condition) {
+
+        } else {
+            throw new Error(message);
+        }
+    }
+
+    export function isNull(value: any): boolean {
+        if (value === null || value === undefined) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
     export interface Mapping {[key: string]: any}
+
+    export class Filter {
+        private $value: any;
+
+        public get(): any {
+            return this.$value;
+        }
+
+        public set(value: any){
+            this.$value = value;
+        }
+    }
+
     export class Filters {
-        asDict():Mapping {
-            return {};
+        private $filters: {[filter: string]: Filter} = {};
+
+        public asDict(): Mapping {
+            var filterName: string;
+            var dict: {[filterName: string]: any} = {};
+
+            for(filterName in this.$filters) {
+                if(!this.$filters.hasOwnProperty(filterName)){
+                    continue;
+                }
+                dict[filterName] = this.$filters[filterName].get();
+            }
+            return dict;
+        }
+
+        public set(filterName: string, value: any) {
+            assert(!isNull(filterName), "filter name cannot be null");
+            var filter: Filter;
+            if(!(filterName in this.$filters)) {
+                filter = new Filter();
+                this.$filters[filterName] = filter;
+            } else {
+                filter = this.$filters[filterName];
+            }
+            filter.set(value);
         }
     }
 
     export class DB {
-        private dataSource: TC.data_source.DataSource;
-        public events: {[key: string]: TC.utils.EventDispatcher} = {};
-        private _objCache: {
+        private $dataSource: TC.data_source.DataSource;
+        public $events: {[key: string]: TC.utils.EventDispatcher} = {};
+        private $objCache: {
             [resource: string]: {
                 [id: string]: Model
             }
@@ -21,10 +73,10 @@ module TC {
         public onChangedEvent: TC.utils.EventDispatcher = new TC.utils.EventDispatcher();
 
         constructor(dataSource: TC.data_source.DataSource, modelRegistry: TC.ModelRegistry){
-            this.dataSource = dataSource;
+            this.$dataSource = dataSource;
             this.modelRegistry = modelRegistry;
-            this.events['unauthorized'] = new TC.utils.EventDispatcher();
-            this._objCache = {};
+            this.$events['unauthorized'] = new TC.utils.EventDispatcher();
+            this.$objCache = {};
         }
 
         stream(resource: string): TC.Stream{
@@ -37,7 +89,7 @@ module TC {
             var request: TC.rest.RestRequest = new TC.rest.RestRequest(
                 resource, data, TC.rest.RestActionType.SEND
             );
-            var ws_deferred: ng.IPromise<TC.rest.RestResponse> = this.dataSource.send(request);
+            var ws_deferred: ng.IPromise<TC.rest.RestResponse> = this.$dataSource.send(request);
 
             ws_deferred.then(this._handleAddResult.bind(this));
             return ws_deferred;
@@ -54,7 +106,7 @@ module TC {
                 filters.asDict(),
                 TC.rest.RestActionType.GET
             );
-            var ws_deferred: ng.IPromise<TC.rest.RestResponse> = this.dataSource.get(request);
+            var ws_deferred: ng.IPromise<TC.rest.RestResponse> = this.$dataSource.get(request);
             console.log("runQuery", ws_deferred);
             ws_deferred.then(this._handleQueryResult.bind(this));
             return ws_deferred;
@@ -63,10 +115,10 @@ module TC {
         public getModel(resource: string, id: string): Model {
             var resources: { [id: string]: Model };
             var model: Model;
-            if (!(resource in this._objCache)) {
+            if (!(resource in this.$objCache)) {
                 throw new Error("Missing resource: " + resource);
             } else {
-                resources = this._objCache[resource];
+                resources = this.$objCache[resource];
             }
 
             if (!(id in resources)) {
@@ -77,32 +129,39 @@ module TC {
             return model;
         }
 
-        public getOrCreateModel(resource: string, id: string, value: Mapping): Model {
+        public getOrCreateModel(resource: string, id: string, value?: Mapping): Model {
             var resources: { [id: string]: Model };
             var model: Model;
-            if (!(resource in this._objCache)) {
+            if (!(resource in this.$objCache)) {
                 resources = {};
-                this._objCache[resource] = resources;
+                this.$objCache[resource] = resources;
             } else {
-                resources = this._objCache[resource];
+                resources = this.$objCache[resource];
             }
 
             if (!(id in resources)) {
+                console.log("DB: Creating new model: ", resource, id);
                 var model_factory: TC.ModelFactory = this.modelRegistry.getModel(resource);
-                model = model_factory.create(value);
-                resources[model.getId()] = model;
+                model = model_factory.create(id, this);
+                resources[id] = model;
             } else {
+                console.log("DB: Model exists", resource, id);
                 model = resources[id];
+            }
+            if (value != null && value != undefined) {
                 model.update(value);
+            }
+            if(id !== model.getId()) {
+                throw new Error("Received inconsistand data, requested model id " + id + " is not equal to received model id = " + model.getId());
             }
             return model;
         }
 
         private _handleQueryResult(value: TC.rest.RestResponse){
-
+            console.log("DB._handleQueryResult");
             if (value.getStatus() === TC.rest.ResponseStatus.STATUS_UNAUTHORIZED){
                 console.warn("Received response with not ok status", value);
-                this.events['unauthorized'].trigger(new TC.utils.Event());
+                this.$events['unauthorized'].trigger(new TC.utils.Event());
                 return;
             }
 
@@ -153,9 +212,9 @@ module TC {
 
     export class ModelFactory {
         public name: string;
-        private type: new(value: Mapping, factory: ModelFactory) => TC.Model;
+        private type: new(id: string, factory: ModelFactory, db:DB) => TC.Model;
 
-        constructor(name: string, type: new() => TC.Model){
+        constructor(name: string, type: new(id: string, factory: ModelFactory, db:DB) => TC.Model){
             if (type === null || type === undefined){
                 throw Error("ModelFactory type argument cannot be null or undefined");
             }
@@ -164,8 +223,8 @@ module TC {
             this.name = name;
         }
 
-        create(value: Mapping): TC.Model {
-            return new this.type(value, this);
+        create(id: string, db: DB): TC.Model {
+            return new this.type(id, this, db);
         }
     }
 
@@ -173,67 +232,98 @@ module TC {
         private resource: string;
         private id: string;
         private $factory: ModelFactory;
+        private $db: DB;
 
-        constructor(value: Mapping, factory: ModelFactory){ // FIXME : Mapping type is almost the as 'any'
+        constructor(id: string, factory: ModelFactory, db: DB){ // FIXME : Mapping type is almost the as 'any'
             this.$factory = factory;
-            this.update(value);
+            this.$db = db;
+            this.id = id;
         }
 
         public update(value: Mapping): void {
+            if(value['$resource'] === null || value['$resource'] === undefined){
+                throw new Error("Cannot update model with undefined resource");
+            }
             if(value['$resource'] != this.$factory.name) {
                 throw new Error("Invalid resource for factory: " + value['$resource'] + " expected: " + this.$factory.name);
             }
+            if(value['$id'] === null || value['$id'] === undefined){
+                throw new Error("Cannot update model with undefined id");
+            }
+            if(value['$id'] != this.id) {
+                throw new Error("Invalid id for model: " + value['$id'] + " expected: " + this.id);
+            }
             this.id = value['$id'];
             this.resource = value['$resource'];
+        }
+
+        public resourceName(){
+            return 'resource.' + this.$factory.name;
+        }
+
+        public getFilters(): Filters {
+            var filters: Filters = new Filters();
+            filters.set('$id', this.id);
+            return filters;
         }
 
         public getId(): string {
             return this.id;
         }
 
-    }
-
-    export class Stream {
-        private _db: TC.DB;
-        private _factory: TC.ModelFactory;
-        private _filters: Filters;
-        public events: {
-            [key: string]: TC.utils.EventDispatcher
-        } = {};
-        objects: TC.Model[];
-
-        constructor(db: TC.DB, factory: TC.ModelFactory){
-            this._db = db;
-            this._factory = factory;
-            this._filters = new Filters();
-            this.events['unauthorized'] = new TC.utils.EventDispatcher();
-            this.objects = [];
-        }
-
-        load():void{
-            this._db.runQuery(
+        public load(){
+            this.$db.runQuery(
                 this.resourceName(),
                 this.getFilters()
             ).then(this._handleQueryResult.bind(this));
         }
 
-        addItem(data: Mapping): ng.IPromise<TC.rest.RestResponse> {
+        private _handleQueryResult(response: TC.rest.RestResponse): void {
+
+        }
+    }
+
+    export class Stream {
+        private $db: TC.DB;
+        private $factory: TC.ModelFactory;
+        private $filters: Filters;
+        public $events: {
+            [key: string]: TC.utils.EventDispatcher
+        } = {};
+        public objects: TC.Model[];
+
+        constructor(db: TC.DB, factory: TC.ModelFactory){
+            this.$db = db;
+            this.$factory = factory;
+            this.$filters = new Filters();
+            this.$events['unauthorized'] = new TC.utils.EventDispatcher();
+            this.objects = [];
+        }
+
+        public load(): void {
+            this.$db.runQuery(
+                this.resourceName(),
+                this.getFilters()
+            ).then(this._handleQueryResult.bind(this));
+        }
+
+        public addItem(data: Mapping): ng.IPromise<TC.rest.RestResponse> {
             TC.utils.assert(data !== undefined, "'data' cannot be undefined");
-            var ws_deferred: ng.IPromise<TC.rest.RestResponse> = this._db.addItem('resource.' + this._factory.name, data);
+            var ws_deferred: ng.IPromise<TC.rest.RestResponse> = this.$db.addItem('resource.' + this.$factory.name, data);
             ws_deferred.then(this._handleAddResult.bind(this));
             return ws_deferred;
         }
 
-        resourceName(): string {
-            return 'resource.' + this._factory.name;
+        public resourceName(): string {
+            return 'resource.' + this.$factory.name;
         }
 
-        pushObject(object: TC.Model): void {
+        public pushObject(object: TC.Model): void {
             this.objects.push(object);
         }
 
-        getFilters(): Filters {
-            return this._filters;
+        public getFilters(): Filters {
+            return this.$filters;
         }
 
         private _handleAddResult(value: TC.rest.RestResponse){
@@ -244,7 +334,7 @@ module TC {
 
             if (value.getStatus() === TC.rest.ResponseStatus.STATUS_UNAUTHORIZED){
                 console.warn("Received response with not ok status", value);
-                this.events['unauthorized'].trigger(new TC.utils.Event());
+                this.$events['unauthorized'].trigger(new TC.utils.Event());
                 return;
             }
 
@@ -263,7 +353,7 @@ module TC {
                         console.error("missing $id or $resource from data", value);
                         throw new Error("missing $id or $resource from data");
                     }
-                    var model: TC.Model = this._db.getModel(resource, id);
+                    var model: TC.Model = this.$db.getModel(resource, id);
                     this.pushObject(model);
                 });
                 return;

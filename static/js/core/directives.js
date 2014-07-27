@@ -2,7 +2,8 @@
 (function(){
 "use strict";
 
-    var module = angular.module('chat.directives', []);
+    console.log("Use chat.directives");
+    var module = angular.module('chat.directives');
 
     var coreStream = function(){
         return {

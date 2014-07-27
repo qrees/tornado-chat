@@ -13,3 +13,4 @@
 /// <reference path="core/session.ts"/>
 /// <reference path="profiles/models.ts"/>
 /// <reference path="login/login.ts"/>
+/// <reference path="directives/core_object.ts"/>

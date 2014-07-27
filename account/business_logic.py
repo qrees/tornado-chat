@@ -2,7 +2,7 @@ from uuid import uuid4
 from account.forms import RegisterForm
 
 from account.models import User, Session
-from common.business_logic import BusinessResponse, BusinessMethod, simple_business_method_factory, InvalidData
+from common.business_logic import BusinessMethod, simple_business_method_factory, InvalidData
 from common.msg_handler import BusinessMsgHandler
 
 

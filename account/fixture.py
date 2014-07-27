@@ -10,3 +10,8 @@ class Users(DataSet):
         id = 0
         username = 'bill'
         password = hash_password('pass')
+
+    class steve:
+        id = 1
+        username = 'steve'
+        password = hash_password('pass')

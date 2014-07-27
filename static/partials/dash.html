@@ -13,6 +13,12 @@
     Stream:
     <div core-stream ref="stream">
         {{ stream.objects }}
+        <div ng-repeat="item in stream.objects">
+            {{ item.id }}
+            <div core-object id="item.contact_id" resource-const="user">
+                TEST: {{ object }}
+            </div>
+        </div>
     </div>
     End of stream
 </div>

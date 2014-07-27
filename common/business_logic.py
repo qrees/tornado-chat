@@ -64,8 +64,10 @@ class InvalidData(BusinessMethodException, SimpleObject):
         return self._data
 
 
-class Unauthorized(BusinessMethodException):
-    pass
+class Unauthorized(BusinessMethodException, SimpleObject):
+
+    def as_simple_object(self):
+        return self._data
 
 
 class ValidationError(BaseException):
@@ -92,7 +94,8 @@ class BusinessMethod(object):
 
     def get_user(self):
         account = self._app.component_registry['account']
-        assert self._sid is not None
+        if self._sid is None:
+            raise Unauthorized()
         return account.user_from_sid(self._sid)
 
     def __init__(self, app, message):
