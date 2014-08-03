@@ -73,6 +73,7 @@ class ApplicationTestCase(DataTestCase, testing.AsyncHTTPTestCase):
     def setUp(self):
         super(ApplicationTestCase, self).setUp()
         self.setUpFixture()
+        self.sid = None
         self.client = WSClient(self.get_url('/websocket'), self.io_loop)
 
     def tearDown(self):
@@ -104,6 +105,9 @@ class ApplicationTestCase(DataTestCase, testing.AsyncHTTPTestCase):
         return future.result()
 
     def send(self, message):
+        if isinstance(message, dict):
+            message = deepcopy(message)
+            message['meta']['sid'] = self.sid
         if not isinstance(message, basestring):
             message = json.dumps(message)
         self.client.write_message(message)
@@ -115,3 +119,9 @@ class ApplicationTestCase(DataTestCase, testing.AsyncHTTPTestCase):
         self.wait()
         resp = future.result()
         return json.loads(resp)
+
+    def login(self, username, password):
+        account_component = self.app.get_component('account')
+        res = account_component.login(username=username, password=password)
+        self.sid = res[0].sid
+        return res

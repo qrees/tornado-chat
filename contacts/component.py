@@ -1,5 +1,5 @@
-from common.msg_handler import HandlerFactory
-from contacts.business_logic import ContactsHandler
+from common.simple import simple_rest_method_handler
+from contacts.business_logic import ContactAddMethod, ContactsMethod
 
 
 class ContactsComponent(object):
@@ -10,7 +10,11 @@ class ContactsComponent(object):
         """:type : common.application.Application"""
 
     def _as_component(self):
-        self._app.msg_handler_registry.register(HandlerFactory(ContactsHandler, self._app))
+        self._app.msg_handler_registry.register(
+            simple_rest_method_handler({
+                'send': ContactAddMethod,
+                'get': ContactsMethod
+            }, 'resource.contact', self._app))
 
     def create(self):
         self._as_component()

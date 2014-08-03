@@ -1,6 +1,8 @@
-import logging
 from common.hacks import MultiDict
 from common.simplifier import Simplifier, SimpleObject
+
+import logging
+logger = logging.getLogger(__name__)
 
 
 class BusinessResponse(object):
@@ -76,32 +78,61 @@ class ValidationError(BaseException):
         self.response = response
 
 
-def simple_business_method_factory(method):
-    class BusnessMethodFactory(object):
-        def __init__(self, app):
-            self._app = app
-
-        def __call__(self, message):
-            return method(self._app, message)()
-
-    return BusnessMethodFactory
-
-
 class BusinessMethod(object):
+    FORM = None
+
+    def __init__(self, app):
+        self._app = app
+
+    def _perform_internal(self, **kwargs):
+        return self._perform(**kwargs)
+
+    def _perform(self, **kwargs):
+        raise NotImplemented("_perform of %r has to be implemented" % (self,))
+
+    def _validate(self, data):
+        if self.FORM is None:
+            return data
+
+        form = self.FORM(self._app, MultiDict(data))
+        if not form.validate():
+            raise InvalidData(form.errors)
+        return form.data
+
+    def __call__(self, actor=None, **body):
+        db = self._app.db
+        try:
+            data = self._validate(body)
+        except ValidationError:
+            raise
+
+        try:
+            response = self._perform_internal(actor=actor, **data)
+            db.commit_session()
+        except Exception:
+            logger.exception("Exception when calling business method")
+            db.rollback_session()
+            raise
+        return response
+
+
+class RestBusinessMethod(object):
+    BUSINES_METHOD = None
     RESPONSE_CLASS = BusinessResponse
     SIMPLIFIER_CLASS = Simplifier
-    FORM = None
 
     def get_user(self):
         account = self._app.component_registry['account']
         if self._sid is None:
-            raise Unauthorized()
+            return None
         return account.user_from_sid(self._sid)
 
-    def __init__(self, app, message):
+    def __init__(self, app):
         self._app = app
-        self._message = message
-        self._sid = self._message.get_sid()
+        self._message = None
+        self._sid = None
+        logger.info("Creating instance of Business Method %r" % (self.BUSINES_METHOD,))
+        self.method = self.BUSINES_METHOD(self._app)
 
     def _simplify(self, data):
         serializer = self.SIMPLIFIER_CLASS(self)
@@ -116,46 +147,21 @@ class BusinessMethod(object):
     def _response_unauthorized(self, serialized):
         return self.RESPONSE_CLASS.response_unauthorized(serialized)
 
-    def _perform_internal(self, **kwargs):
+    def __call__(self, message):
+        body = message.get_body()
+        self._message = message
+        self._sid = self._message.get_sid()
         try:
-            data = self._perform(**kwargs)
+            result = self.method(actor=self.get_user(), **body)
         except InvalidData as e:
             serialized = self._simplify(e)
             return self._response_invalid_data(serialized)
         except Unauthorized as e:
             serialized = self._simplify(e)
             return self._response_unauthorized(serialized)
-        else:
-            serialized = self._simplify(data)
-            return self._response_ok(serialized)
-
-    def _perform(self, **kwargs):
-        raise NotImplemented("_perform of %r has to be implemented" % (self,))
-
-    def _validate(self, data):
-        if self.FORM is None:
-            return data
-
-        form = self.FORM(self._app, MultiDict(data))
-        if not form.validate():
-            raise ValidationError(BusinessResponse.response_invalid_data(form.errors))
-        return form.data
-
-    def __call__(self):
-        db = self._app.db
-        body = self._message.get_body()
-        try:
-            data = self._validate(body)
-        except ValidationError as e:
-            return e.response
-
-        try:
-            response = self._perform_internal(**data)
-            db.commit_session()
-        except Exception, e:
-            logging.exception("Exception when calling business method")
+        except Exception as e:
             response = self.RESPONSE_CLASS.response_exception(e)
-            db.rollback_session()
-        finally:
-            pass
+        else:
+            serialized = self._simplify(result)
+            response = self._response_ok(serialized)
         return response

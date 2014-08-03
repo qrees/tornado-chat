@@ -1,8 +1,7 @@
-from sqlalchemy.orm.exc import NoResultFound
 from account.handlers import handlers
-from account.business_logic import RegisterHandler, LoginHandler
+from account.business_logic import LoginMethod, RegisterMethod
 from account.models import Session, User
-from common.msg_handler import HandlerFactory
+from common.simple import simple_rest_method_handler, simple_business_method
 
 
 class UserAlreadyExists(BaseException):
@@ -20,8 +19,13 @@ class AccountComponent(object):
         for path, handler in handlers:
             self._app.app_handlers.add_handler((path, handler(self._app)))
 
-        self._app.msg_handler_registry.register(HandlerFactory(LoginHandler, self._app))
-        self._app.msg_handler_registry.register(HandlerFactory(RegisterHandler, self._app))
+        self.login = simple_business_method(LoginMethod, self._app)
+        self.register = simple_business_method(RegisterMethod, self._app)
+
+        self._app.msg_handler_registry.register(
+            simple_rest_method_handler({'send': LoginMethod}, 'login', self._app))
+        self._app.msg_handler_registry.register(
+            simple_rest_method_handler({'send': RegisterMethod}, 'register', self._app))
 
     def user_from_sid(self, sid):
         session = self._app.db.session()
@@ -32,18 +36,6 @@ class AccountComponent(object):
         session = self._app.db.session()
         user = session.query(User).filter_by(username=username).one()
         return user
-
-    def add_user(self, username):
-        session = self._app.db.session()
-        try:
-            self.user_from_name(username)
-        except NoResultFound:
-            new_user = User(username=username)
-            session.add(new_user)
-            session.flush()
-            return new_user
-        else:
-            raise UserAlreadyExists()
 
     def create(self):
         self._as_component()

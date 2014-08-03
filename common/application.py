@@ -190,6 +190,9 @@ class Application(object):
             self.component_registry.add_factory(factory)
         self.component_registry.bootstrap()
 
+    def get_component(self, name):
+        return self.component_registry.get_component(name)
+
     def _create_application(self):
         self._tornado = tornado.web.Application(
             self.app_handlers,

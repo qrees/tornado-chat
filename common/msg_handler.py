@@ -91,6 +91,9 @@ class HandlerFactory(object):
     def route(self):
         return self._class.route
 
+    def __repr__(self):
+        return "<HandlerFactory for %r>" % (self._class,)
+
 
 class BusinessMsgHandler(MsgHandler):
     __abstract__ = True
@@ -103,7 +106,7 @@ class BusinessMsgHandler(MsgHandler):
 
         # actions are BusnessMethodFactory from common.business_logic
         for action, handler in self.ACTIONS.items():
-            self._actions[action] = handler(self._app)
+            self._actions[action] = handler
 
     def do_call(self, message):
         action = message.get_action().lower()
@@ -112,4 +115,4 @@ class BusinessMsgHandler(MsgHandler):
             return BusinessResponse.response_invalid_action(action)
 
         method_factory = self._actions[action]
-        return method_factory(message)
+        return method_factory(self._app)(message)

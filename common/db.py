@@ -18,7 +18,10 @@ class Database(object):
         return self.scoped_session()
 
     def commit_session(self):
-        self.session().commit()
+        session = self.session()
+        session.flush()
+        session.expunge_all()
+        session.commit()
         self.scoped_session.remove()
 
     def rollback_session(self):

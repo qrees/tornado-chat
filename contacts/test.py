@@ -28,4 +28,9 @@ class AccountTest(ApplicationTestCase):
         self.assertEquals(deserialized_response['route'], 'resource.contact')
         self.assertEquals(deserialized_response['id'], '1')
         self.assertEquals(deserialized_response['status'], 'ok')
-        print deserialized_response
+        self.assertDictContainsSubset(
+            {
+                '$resource': 'contact',
+                'contact_id': self.data.Users.steve.id
+            },
+            deserialized_response['body'][0])

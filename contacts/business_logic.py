@@ -3,9 +3,8 @@ from account.component import UserAlreadyExists
 from account.forms import UserNameField
 from common import form
 from contacts.models import Contact
-from common.business_logic import BusinessResponse, BusinessMethod, simple_business_method_factory, Unauthorized, \
+from common.business_logic import BusinessResponse, BusinessMethod, Unauthorized, \
     InvalidData
-from common.msg_handler import BusinessMsgHandler
 
 
 class ContactsMethod(BusinessMethod):
@@ -26,9 +25,9 @@ class ContactAddForm(form.Form):
 class ContactAddMethod(BusinessMethod):
     FORM = ContactAddForm
 
-    def _perform(self, **kwargs):
+    def _perform(self, actor, **kwargs):
         session = self._app.db.session()
-        user = self.get_user()
+        user = actor
         if user is None:
             raise Unauthorized({'message': 'You are not logged in'})
 
@@ -53,11 +52,3 @@ class ContactAddMethod(BusinessMethod):
         session.flush()
         assert contact.id is not None
         return [contact]
-
-
-class ContactsHandler(BusinessMsgHandler):
-    route = "resource.contact"
-    ACTIONS = {
-        'get': simple_business_method_factory(ContactsMethod),
-        'send': simple_business_method_factory(ContactAddMethod)
-    }
